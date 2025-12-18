@@ -443,10 +443,16 @@ export default {
           console.log('createTable success:', res)
           this.submitting = false
           this.$message.success('表创建成功')
-          // 返回并刷新表列表
+          // 返回并刷新表列表，保持当前数据源与 schema 选择
           this.$router.push({
-            path: '/datax/db/database',
-            query: { refresh: Date.now() }
+            path: '/datax/integration/database',
+            query: {
+              datasourceId: this.datasourceId,
+              datasourceName: this.datasourceName,
+              datasourceType: this.datasourceType,
+              schema: this.schema,
+              refresh: Date.now()
+            }
           })
         }).catch(err => {
           console.log('createTable error:', err)

@@ -49,102 +49,215 @@
           >
             创建表
           </el-button>
+          <el-button
+            type="primary"
+            icon="el-icon-view"
+            style="margin-left: 10px;"
+            :disabled="!selectedDatasourceId || (showSchemaSelect && !selectedSchema)"
+            @click="handleCreateView"
+          >
+            创建视图
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 主内容区域 -->
     <div class="main-content">
-      <!-- 左侧表列表 -->
+      <!-- 左侧表/视图列表 -->
       <el-card class="table-list-card">
         <div slot="header" class="card-header">
-          <span>表列表</span>
+          <span>对象列表</span>
+        </div>
+        <div class="list-search">
           <el-input
-            v-model="tableSearchKey"
-            placeholder="搜索表名"
+            v-model="searchKey"
+            placeholder="搜索表/视图名称"
             size="small"
             clearable
-            style="width: 150px;"
-          >
-            <i slot="prefix" class="el-input__icon el-icon-search" />
-          </el-input>
+            prefix-icon="el-icon-search"
+          />
         </div>
         <div class="table-list">
-          <div
-            v-for="table in filteredTableList"
-            :key="table"
-            :class="['table-item', { active: selectedTable === table }]"
-            @click="handleTableClick(table)"
-          >
-            <i class="el-icon-s-grid" />
-            <span>{{ table }}</span>
+          <!-- 表节点 -->
+          <div class="list-section-header" @click="showTables = !showTables">
+            <div class="section-left">
+              <i class="el-icon-s-grid section-icon table-icon" />
+              <span class="section-title">表</span>
+              <el-tag size="mini" effect="plain" type="info">{{ filteredTableList.length }}</el-tag>
+            </div>
+            <i :class="['el-icon-arrow-down','section-arrow', { 'is-collapsed': !showTables }]" />
           </div>
-          <el-empty v-if="filteredTableList.length === 0" description="暂无数据" :image-size="60" />
+          <transition name="el-zoom-in-top">
+            <div v-show="showTables" class="list-section-body">
+              <div
+                v-for="table in filteredTableList"
+                :key="table"
+                :class="['table-item', { active: selectedType === 'table' && selectedTable === table }]"
+                @click="handleTableClick(table)"
+              >
+                <i class="el-icon-s-grid" />
+                <span>{{ table }}</span>
+              </div>
+              <el-empty v-if="filteredTableList.length === 0" description="暂无数据" :image-size="60" />
+            </div>
+          </transition>
+
+          <!-- 视图节点 -->
+          <div class="list-section-header" style="margin-top: 16px;" @click="showViews = !showViews">
+            <div class="section-left">
+              <i class="el-icon-view section-icon view-icon" />
+              <span class="section-title">视图</span>
+              <el-tag size="mini" effect="plain" type="info">{{ filteredViewList.length }}</el-tag>
+            </div>
+            <i :class="['el-icon-arrow-down','section-arrow', { 'is-collapsed': !showViews }]" />
+          </div>
+          <transition name="el-zoom-in-top">
+            <div v-show="showViews" class="list-section-body">
+              <div
+                v-for="view in filteredViewList"
+                :key="view"
+                :class="['table-item', { active: selectedType === 'view' && selectedView === view }]"
+                @click="handleViewClick(view)"
+              >
+                <i class="el-icon-view" />
+                <span>{{ view }}</span>
+              </div>
+              <el-empty v-if="filteredViewList.length === 0" description="暂无视图" :image-size="60" />
+            </div>
+          </transition>
         </div>
       </el-card>
 
-      <!-- 右侧表结构 -->
-      <el-card class="table-structure-card">
-        <div slot="header" class="card-header">
-          <span>表结构</span>
-          <div v-if="selectedTable" class="table-header-right">
-            <span class="table-name">{{ selectedTable }}</span>
-            <el-button
-              type="primary"
-              size="mini"
-              icon="el-icon-edit"
-              @click="handleAlterTable"
-            >
-              修改表
-            </el-button>
-            <el-button
-              type="danger"
-              size="mini"
-              icon="el-icon-delete"
-              @click="handleDropTable"
-            >
-              删除表
-            </el-button>
+      <!-- 右侧表结构 + 索引（上下布局） -->
+      <div class="structure-pane">
+        <!-- 表结构 -->
+        <el-card class="table-structure-card structure-main">
+          <div slot="header" class="card-header">
+            <span>结构</span>
+            <div v-if="selectedTable || selectedView" class="table-header-right">
+              <span class="table-name">{{ selectedType === 'table' ? selectedTable : selectedView }}</span>
+              <template v-if="selectedType === 'table'">
+                <el-button
+                  type="primary"
+                  size="mini"
+                  icon="el-icon-edit"
+                  @click="handleAlterTable"
+                >
+                  修改表
+                </el-button>
+                <el-button
+                  type="danger"
+                  size="mini"
+                  icon="el-icon-delete"
+                  @click="handleDropTable"
+                >
+                  删除表
+                </el-button>
+              </template>
+            </div>
           </div>
-        </div>
-        <el-table
-          v-loading="columnsLoading"
-          :data="columnList"
-          border
-          stripe
-          size="small"
-          style="width: 100%"
-        >
-          <el-table-column prop="index" label="序号" width="60" align="center" />
-          <el-table-column prop="name" label="字段名" min-width="200" />
-          <el-table-column v-if="hasDetailInfo" prop="type" label="数据类型" width="100" />
-          <el-table-column v-if="hasDetailInfo" prop="length" label="长度" width="100" align="center">
-            <template slot-scope="scope">
-              {{ scope.row.length || '-' }}
-            </template>
-          </el-table-column>
-          <el-table-column v-if="hasDetailInfo" prop="nullable" label="可为空" width="80" align="center">
-            <template slot-scope="scope">
-              <el-tag v-if="scope.row.nullable !== undefined" :type="scope.row.nullable ? 'success' : 'danger'" size="mini">
-                {{ scope.row.nullable ? '是' : '否' }}
-              </el-tag>
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="hasDetailInfo" prop="primaryKey" label="主键" width="80" align="center">
-            <template slot-scope="scope">
-              <el-tag v-if="scope.row.primaryKey" type="warning" size="mini">PK</el-tag>
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="hasDetailInfo" prop="comment" label="备注" min-width="150">
-            <template slot-scope="scope">
-              {{ scope.row.comment || '-' }}
-            </template>
-          </el-table-column>
-        </el-table>
-        <el-empty v-if="!selectedTable && columnList.length === 0" description="请选择表查看结构" />
-      </el-card>
+          <el-table
+            v-loading="columnsLoading"
+            :data="columnList"
+            border
+            stripe
+            size="small"
+            style="width: 100%"
+          >
+            <el-table-column prop="index" label="序号" width="60" align="center" />
+            <el-table-column prop="name" label="字段名" min-width="200" />
+            <el-table-column v-if="hasDetailInfo" prop="type" label="数据类型" width="100" />
+            <el-table-column v-if="hasDetailInfo" prop="length" label="长度" width="100" align="center">
+              <template slot-scope="scope">
+                {{ scope.row.length || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column v-if="hasDetailInfo" prop="nullable" label="可为空" width="80" align="center">
+              <template slot-scope="scope">
+                <el-tag v-if="scope.row.nullable !== undefined" :type="scope.row.nullable ? 'success' : 'danger'" size="mini">
+                  {{ scope.row.nullable ? '是' : '否' }}
+                </el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="hasDetailInfo" prop="primaryKey" label="主键" width="80" align="center">
+              <template slot-scope="scope">
+                <el-tag v-if="scope.row.primaryKey" type="warning" size="mini">PK</el-tag>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="hasDetailInfo" prop="comment" label="备注" min-width="150">
+              <template slot-scope="scope">
+                {{ scope.row.comment || '-' }}
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="!selectedTable && !selectedView && columnList.length === 0" description="请选择表或视图查看结构" />
+        </el-card>
+
+        <!-- 索引列表 -->
+        <el-card class="table-structure-card index-card">
+          <div slot="header" class="card-header">
+            <span>索引</span>
+            <div>
+              <el-button
+                v-if="selectedType === 'table'"
+                type="primary"
+                size="mini"
+                icon="el-icon-plus"
+                @click="openCreateIndex"
+              >
+                创建索引
+              </el-button>
+            </div>
+          </div>
+          <el-table
+            v-loading="indexesLoading"
+            :data="indexList"
+            border
+            stripe
+            size="small"
+            style="width: 100%"
+            :max-height="220"
+            empty-text="暂无索引"
+          >
+            <el-table-column prop="indexName" label="索引名" min-width="140" :show-overflow-tooltip="true" />
+            <el-table-column prop="columns" label="列" min-width="160" :show-overflow-tooltip="true" />
+            <el-table-column prop="indexType" label="类型" width="120" v-if="indexList && indexList.length && indexList[0].indexType !== undefined" />
+            <el-table-column prop="nonUnique" label="是否唯一" width="100" align="center" v-if="indexList && indexList.length && indexList[0].nonUnique !== undefined">
+              <template slot-scope="scope">
+                <el-tag size="mini" :type="scope.row.nonUnique ? 'info' : 'success'">
+                  {{ scope.row.nonUnique ? '否' : '是' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="definition" label="定义" min-width="260" v-if="indexList && indexList.length && indexList[0].definition !== undefined" />
+          </el-table>
+        </el-card>
+
+      <!-- 创建索引弹窗 -->
+      <el-dialog
+        title="创建索引"
+        :visible.sync="createIndexDialogVisible"
+        width="700px"
+      >
+        <el-form label-width="80px">
+          <el-form-item label="SQL">
+            <el-input
+              v-model="createIndexSql"
+              type="textarea"
+              :rows="8"
+              placeholder="请输入创建索引的SQL，例如：CREATE INDEX idx_name ON table(column1, column2);"
+            />
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="createIndexDialogVisible = false">取消</el-button>
+          <el-button type="primary" :disabled="!createIndexSql" @click="handleCreateIndex">创建</el-button>
+        </span>
+      </el-dialog>
+      </div>
     </div>
   </div>
 </template>
@@ -152,6 +265,7 @@
 <script>
 import { list as getDatasourceList } from '@/api/datax-jdbcDatasource'
 import * as metadataApi from '@/api/metadata-query'
+import { createIndex } from '@/api/metadata-query'
 
 export default {
   name: 'Database',
@@ -170,11 +284,30 @@ export default {
       // 表相关
       tableList: [],
       selectedTable: null,
-      tableSearchKey: '',
+
+      // 视图相关
+      viewList: [],
+      selectedView: null,
+
+      // 通用搜索
+      searchKey: '',
+
+      // 折叠状态（默认收起）
+      showTables: false,
+      showViews: false,
+
+      // 当前选中类型：table | view
+      selectedType: 'table',
 
       // 字段相关
       columnList: [],
       columnsLoading: false,
+
+      // 索引相关
+      indexList: [],
+      indexesLoading: false,
+      createIndexDialogVisible: false,
+      createIndexSql: '',
 
       // 查询参数
       datasourceQuery: {
@@ -185,11 +318,19 @@ export default {
   },
   computed: {
     filteredTableList() {
-      if (!this.tableSearchKey) {
+      if (!this.searchKey) {
         return this.tableList
       }
-      const key = this.tableSearchKey.toLowerCase()
+      const key = this.searchKey.toLowerCase()
       return this.tableList.filter(table => table.toLowerCase().includes(key))
+    },
+    // 视图过滤
+    filteredViewList() {
+      if (!this.searchKey) {
+        return this.viewList
+      }
+      const key = this.searchKey.toLowerCase()
+      return this.viewList.filter(view => view.toLowerCase().includes(key))
     },
     // 判断是否有详细字段信息（类型、可空等）
     hasDetailInfo() {
@@ -226,6 +367,17 @@ export default {
         }
       },
       immediate: false
+    },
+    // 搜索框输入后，如有结果自动展开表/视图列表
+    searchKey(val) {
+      if (val) {
+        if (this.filteredTableList.length > 0) {
+          this.showTables = true
+        }
+        if (this.filteredViewList.length > 0) {
+          this.showViews = true
+        }
+      }
     }
   },
   created() {
@@ -270,6 +422,8 @@ export default {
       this.selectedSchema = null
       this.tableList = []
       this.selectedTable = null
+      this.viewList = []
+      this.selectedView = null
       this.columnList = []
 
       if (!val) {
@@ -287,6 +441,7 @@ export default {
       } else {
         this.showSchemaSelect = false
         this.loadTableList()
+        this.loadViewList()
       }
     },
 
@@ -304,10 +459,13 @@ export default {
     handleSchemaChange(val) {
       this.tableList = []
       this.selectedTable = null
+      this.viewList = []
+      this.selectedView = null
       this.columnList = []
 
       if (val) {
         this.loadTableList()
+        this.loadViewList()
       }
     },
 
@@ -337,10 +495,38 @@ export default {
       })
     },
 
+    // 加载视图列表
+    loadViewList() {
+      const params = {
+        datasourceId: this.selectedDatasourceId
+      }
+      if (this.showSchemaSelect && this.selectedSchema) {
+        params.tableSchema = this.selectedSchema
+      }
+      metadataApi.getViews(params).then(response => {
+        this.viewList = response || []
+      }).catch(() => {
+        // 默认无视图
+        this.viewList = []
+      })
+    },
+
     // 点击表
     handleTableClick(tableName) {
+      this.selectedType = 'table'
       this.selectedTable = tableName
+      this.selectedView = null
       this.loadColumnList()
+      this.loadIndexList()
+    },
+
+    // 点击视图
+    handleViewClick(viewName) {
+      this.selectedType = 'view'
+      this.selectedView = viewName
+      this.selectedTable = null
+      this.loadColumnList()
+      this.loadIndexList()
     },
 
     // 加载字段列表（使用新接口获取详细信息）
@@ -348,7 +534,7 @@ export default {
       this.columnsLoading = true
       const params = {
         datasourceId: this.selectedDatasourceId,
-        tableName: this.selectedTable
+        tableName: this.selectedType === 'table' ? this.selectedTable : this.selectedView
       }
 
       metadataApi.getColumnsInfo(params).then(response => {
@@ -377,6 +563,52 @@ export default {
       })
     },
 
+    // 加载索引列表
+    loadIndexList() {
+      if (this.selectedType !== 'table') {
+        this.indexList = []
+        this.indexesLoading = false
+        return
+      }
+      this.indexesLoading = true
+      const params = {
+        datasourceId: this.selectedDatasourceId,
+        tableName: this.selectedType === 'table' ? this.selectedTable : this.selectedView
+      }
+      if (this.showSchemaSelect && this.selectedSchema) {
+        params.tableSchema = this.selectedSchema
+      }
+      metadataApi.getIndexes(params).then(response => {
+        this.indexList = response || []
+        this.indexesLoading = false
+      }).catch(() => {
+        this.indexList = []
+        this.indexesLoading = false
+      })
+    },
+
+    openCreateIndex() {
+      this.createIndexSql = ''
+      this.createIndexDialogVisible = true
+    },
+
+    handleCreateIndex() {
+      if (!this.createIndexSql) {
+        this.$message.warning('请输入索引SQL')
+        return
+      }
+      createIndex({
+        datasourceId: this.selectedDatasourceId,
+        indexSql: this.createIndexSql
+      }).then(() => {
+        this.$message.success('索引创建成功')
+        this.createIndexDialogVisible = false
+        this.loadIndexList()
+      }).catch(err => {
+        this.$message.error('创建失败：' + (err.message || '未知错误'))
+      })
+    },
+
     // 跳转到创建表页面
     handleCreateTable() {
       const query = {
@@ -388,7 +620,23 @@ export default {
         query.schema = this.selectedSchema
       }
       this.$router.push({
-        path: '/datax/db/database/create-table',
+        path: '/datax/integration/database/create-table',
+        query
+      })
+    },
+
+    // 跳转到创建视图页面
+    handleCreateView() {
+      const query = {
+        datasourceId: this.selectedDatasourceId,
+        datasourceName: this.currentDatasource ? this.currentDatasource.datasourceName : '',
+        datasourceType: this.currentDatasource ? this.currentDatasource.datasource : ''
+      }
+      if (this.showSchemaSelect && this.selectedSchema) {
+        query.schema = this.selectedSchema
+      }
+      this.$router.push({
+        path: '/datax/integration/database/create-view',
         query
       })
     },
@@ -405,7 +653,7 @@ export default {
         query.schema = this.selectedSchema
       }
       this.$router.push({
-        path: '/datax/db/database/alter-table',
+        path: '/datax/integration/database/alter-table',
         query
       })
     },
@@ -458,6 +706,7 @@ export default {
   gap: 20px;
   height: calc(100vh - 220px);
   min-height: 400px;
+  min-width: 0;
 }
 
 .table-list-card {
@@ -465,6 +714,8 @@ export default {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
 }
 
 .table-list-card >>> .el-card__body {
@@ -474,10 +725,12 @@ export default {
 }
 
 .table-structure-card {
-  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  min-width: 0;
 }
 
 .table-structure-card >>> .el-card__body {
@@ -485,10 +738,28 @@ export default {
   overflow: auto;
 }
 
+.structure-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.structure-main {
+  flex: 1 1 auto;
+  min-height: 320px; /* 约 8 行高度 */
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.index-card {
+  width: 100%;
+  flex: 0 0 auto;
 }
 
 .table-name {
@@ -506,6 +777,12 @@ export default {
   height: 100%;
   overflow-y: auto;
   padding: 10px 0;
+  background: #fafafa;
+}
+
+.list-search {
+  padding: 10px 12px 0 12px;
+  background: #fafafa;
 }
 
 .table-item {
@@ -516,6 +793,7 @@ export default {
   gap: 8px;
   transition: all 0.2s;
   border-left: 3px solid transparent;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .table-item:hover {
@@ -534,5 +812,54 @@ export default {
 
 .table-item.active i {
   color: #409EFF;
+}
+
+.list-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+  cursor: pointer;
+}
+
+.section-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.section-title {
+  font-size: 13px;
+}
+
+.section-icon {
+  font-size: 14px;
+  color: #909399;
+}
+
+.table-icon {
+  color: #67c23a;
+}
+
+.view-icon {
+  color: #409EFF;
+}
+
+.list-section-body {
+  padding: 4px 0;
+}
+
+.section-arrow {
+  font-size: 14px;
+  color: #909399;
+  transition: transform 0.2s;
+}
+
+.section-arrow.is-collapsed {
+  transform: rotate(-90deg);
 }
 </style>

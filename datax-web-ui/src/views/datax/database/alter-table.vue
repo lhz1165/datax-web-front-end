@@ -372,10 +372,16 @@ export default {
         this.editColumnDialogVisible = false
         this.editColumnLoading = false
         this.loadExistingColumns()
-        // 返回列表页时刷新表结构
+        // 返回列表页时刷新表结构，保持当前数据源与 schema 选择
         this.$router.push({
-          path: '/datax/db/database',
-          query: { refresh: Date.now() }
+          path: '/datax/integration/database',
+          query: {
+            datasourceId: this.datasourceId,
+            datasourceName: this.datasourceName,
+            datasourceType: this.datasourceType,
+            schema: this.schema,
+            refresh: Date.now()
+          }
         })
       }).catch(err => {
         this.editColumnLoading = false
@@ -399,13 +405,19 @@ export default {
           columnName: row.name
         }
         alterTable(params).then(() => {
-          this.$message.success('删除字段成功')
-          this.loadExistingColumns()
-          // 返回列表页时刷新表结构
-          this.$router.push({
-            path: '/datax/db/database',
-            query: { refresh: Date.now() }
-          })
+        this.$message.success('删除字段成功')
+        this.loadExistingColumns()
+        // 返回列表页时刷新表结构，保持当前数据源与 schema 选择
+        this.$router.push({
+          path: '/datax/integration/database',
+          query: {
+            datasourceId: this.datasourceId,
+            datasourceName: this.datasourceName,
+            datasourceType: this.datasourceType,
+            schema: this.schema,
+            refresh: Date.now()
+          }
+        })
         }).catch(err => {
           this.$message.error(err.msg || '删除字段失败')
         })
@@ -421,12 +433,18 @@ export default {
         alterType: 'MODIFY_COMMENT',
         tableComment: this.tableForm.tableComment
       }
-      alterTable(params).then(() => {
+        alterTable(params).then(() => {
         this.$message.success('修改表注释成功')
-        // 返回列表页时刷新表结构
+        // 返回列表页时刷新表结构，保持当前数据源与 schema 选择
         this.$router.push({
-          path: '/datax/db/database',
-          query: { refresh: Date.now() }
+          path: '/datax/integration/database',
+          query: {
+            datasourceId: this.datasourceId,
+            datasourceName: this.datasourceName,
+            datasourceType: this.datasourceType,
+            schema: this.schema,
+            refresh: Date.now()
+          }
         })
       }).catch(err => {
         this.$message.error(err.msg || '修改表注释失败')
@@ -544,10 +562,16 @@ export default {
         this.submitting = false
         this.newColumns = []
         this.loadExistingColumns()
-        // 返回列表页时刷新表结构
+        // 返回列表页时刷新表结构，保持当前数据源与 schema 选择
         this.$router.push({
-          path: '/datax/db/database',
-          query: { refresh: Date.now() }
+          path: '/datax/integration/database',
+          query: {
+            datasourceId: this.datasourceId,
+            datasourceName: this.datasourceName,
+            datasourceType: this.datasourceType,
+            schema: this.schema,
+            refresh: Date.now()
+          }
         })
       }).catch(err => {
         this.submitting = false

@@ -537,6 +537,90 @@ public abstract class BaseQueryTool implements QueryToolInterface {
         }
     }
 
+    /**
+     * 获取视图列表
+     *
+     * @param schema 指定schema，为空则使用当前schema/默认schema
+     * @return 视图名称列表
+     */
+    public List<String> getViews(String schema) {
+        List<String> views = new ArrayList<>();
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            String dbType = currentDatabase;
+            String schemaName = StringUtils.isNotBlank(schema) ? schema : currentSchema;
+            String sql;
+            if (JdbcConstants.MYSQL.equalsIgnoreCase(dbType)) {
+                sql = "SELECT TABLE_NAME FROM information_schema.VIEWS WHERE TABLE_SCHEMA='" + schemaName + "'";
+            } else if (JdbcConstants.POSTGRESQL.equalsIgnoreCase(dbType)) {
+                if (StringUtils.isBlank(schemaName)) {
+                    schemaName = "public";
+                }
+                sql = "SELECT table_name FROM information_schema.views WHERE table_schema='" + schemaName + "'";
+            } else {
+                return views;
+            }
+            stmt = connection.createStatement();
+            rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                views.add(rs.getString(1));
+            }
+        } catch (SQLException e) {
+            logger.error("[getViews Exception] --> the exception message is:" + e.getMessage());
+        } finally {
+            JdbcUtils.close(rs);
+            JdbcUtils.close(stmt);
+        }
+        return views;
+    }
+
+    @Override
+    public List<Map<String, Object>> getIndexes(String tableName, String tableSchema) {
+        List<Map<String, Object>> indexes = new ArrayList<>();
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            String dbType = currentDatabase;
+            String schemaName = StringUtils.isNotBlank(tableSchema) ? tableSchema : currentSchema;
+            String sql;
+            if (JdbcConstants.MYSQL.equalsIgnoreCase(dbType)) {
+                sql = "SELECT INDEX_NAME, NON_UNIQUE, INDEX_TYPE, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS COLS " +
+                        "FROM information_schema.statistics " +
+                        "WHERE TABLE_SCHEMA='" + schemaName + "' AND TABLE_NAME='" + tableName + "' " +
+                        "GROUP BY INDEX_NAME, NON_UNIQUE, INDEX_TYPE";
+            } else if (JdbcConstants.POSTGRESQL.equalsIgnoreCase(dbType)) {
+                if (StringUtils.isBlank(schemaName)) {
+                    schemaName = "public";
+                }
+                sql = "SELECT indexname AS INDEX_NAME, indexdef AS INDEX_DEF " +
+                        "FROM pg_indexes WHERE schemaname='" + schemaName + "' AND tablename='" + tableName + "'";
+            } else {
+                return indexes;
+            }
+            stmt = connection.createStatement();
+            rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                Map<String, Object> row = new java.util.HashMap<>();
+                row.put("indexName", rs.getString(1));
+                if (JdbcConstants.MYSQL.equalsIgnoreCase(dbType)) {
+                    row.put("nonUnique", rs.getBoolean(2));
+                    row.put("indexType", rs.getString(3));
+                    row.put("columns", rs.getString(4));
+                } else {
+                    row.put("definition", rs.getString(2));
+                }
+                indexes.add(row);
+            }
+        } catch (SQLException e) {
+            logger.error("[getIndexes Exception] --> the exception message is:" + e.getMessage());
+        } finally {
+            JdbcUtils.close(rs);
+            JdbcUtils.close(stmt);
+        }
+        return indexes;
+    }
+
     public List<String> getTableSchema() {
         List<String> schemas = new ArrayList<>();
         Statement stmt = null;

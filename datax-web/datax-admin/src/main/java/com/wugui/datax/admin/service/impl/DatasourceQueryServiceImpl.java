@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * datasource query
@@ -143,6 +144,61 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
         queryTool.executeCreateTableSql(createTableSql);
 
+        return true;
+    }
+
+    @Override
+    public List<String> getViews(Long id, String tableSchema) throws IOException {
+        //获取数据源对象
+        JobDatasource datasource = jobDatasourceService.getById(id);
+        if (ObjectUtil.isNull(datasource)) {
+            return Lists.newArrayList();
+        }
+        // 目前仅支持 MySQL / PostgreSQL 视图查询
+        if (JdbcConstants.MYSQL.equals(datasource.getDatasource()) ||
+            JdbcConstants.POSTGRESQL.equals(datasource.getDatasource())) {
+            BaseQueryTool qTool = QueryToolFactory.getByDbType(datasource);
+            return qTool.getViews(tableSchema);
+        }
+        return Lists.newArrayList();
+    }
+
+    @Override
+    public Boolean createView(Long datasourceId, String viewSql) throws SQLException {
+        //获取数据源对象
+        JobDatasource datasource = jobDatasourceService.getById(datasourceId);
+        if (ObjectUtil.isNull(datasource)) {
+            throw new RuntimeException("数据源不存在");
+        }
+        if (StringUtils.isBlank(viewSql)) {
+            throw new RuntimeException("视图SQL不能为空");
+        }
+        BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
+        queryTool.executeCreateTableSql(viewSql);
+        return true;
+    }
+
+    @Override
+    public List<Map<String, Object>> getIndexes(Long datasourceId, String tableName, String tableSchema) throws IOException {
+        JobDatasource datasource = jobDatasourceService.getById(datasourceId);
+        if (ObjectUtil.isNull(datasource)) {
+            return Lists.newArrayList();
+        }
+        BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
+        return queryTool.getIndexes(tableName, tableSchema);
+    }
+
+    @Override
+    public Boolean createIndex(Long datasourceId, String indexSql) throws SQLException {
+        JobDatasource datasource = jobDatasourceService.getById(datasourceId);
+        if (ObjectUtil.isNull(datasource)) {
+            throw new RuntimeException("数据源不存在");
+        }
+        if (StringUtils.isBlank(indexSql)) {
+            throw new RuntimeException("索引SQL不能为空");
+        }
+        BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
+        queryTool.executeCreateTableSql(indexSql);
         return true;
     }
 

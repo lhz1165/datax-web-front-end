@@ -11,6 +11,15 @@ export function getTables(params) {
   })
 }
 
+// 获取视图名
+export function getViews(params) {
+  return request({
+    url: '/api/metadata/getViews',
+    method: 'get',
+    params
+  })
+}
+
 // 获取schema
 export function getTableSchema(params) {
   return request({
@@ -86,6 +95,33 @@ export function updateColumnsValue(query) {
 export function alterTable(data) {
   return request({
     url: '/api/metadata/alterTable',
+    method: 'post',
+    data
+  })
+}
+
+// 创建视图（执行视图 SQL）
+export function createView(data) {
+  return request({
+    url: '/api/metadata/createView',
+    method: 'post',
+    data
+  })
+}
+
+// 获取索引列表
+export function getIndexes(params) {
+  return request({
+    url: '/api/metadata/getIndexes',
+    method: 'get',
+    params
+  })
+}
+
+// 创建索引
+export function createIndex(data) {
+  return request({
+    url: '/api/metadata/createIndex',
     method: 'post',
     data
   })

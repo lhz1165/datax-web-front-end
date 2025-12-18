@@ -156,4 +156,60 @@ public class MetadataController extends BaseController {
     public R<Boolean> alterTable(@RequestBody AlterTableDto dto) throws SQLException {
         return success(datasourceQueryService.alterTable(dto));
     }
+
+    /**
+     * 获取视图列表
+     *
+     * @param datasourceId 数据源ID
+     * @param tableSchema  Schema（PostgreSQL需要）
+     * @return 视图名称列表
+     */
+    @GetMapping("/getViews")
+    @ApiOperation("根据数据源id获取视图列表")
+    public R<List<String>> getViews(Long datasourceId, String tableSchema) throws IOException {
+        return success(datasourceQueryService.getViews(datasourceId, tableSchema));
+    }
+
+    /**
+     * 创建视图
+     *
+     * @param datasourceId 数据源ID
+     * @param viewSql      视图SQL（包含 CREATE VIEW）
+     * @return 是否创建成功
+     */
+    @PostMapping("/createView")
+    @ApiOperation("创建视图")
+    public R<Boolean> createView(@RequestBody com.fasterxml.jackson.databind.node.ObjectNode body) throws SQLException {
+        Long datasourceId = body.get("datasourceId").asLong();
+        String viewSql = body.get("viewSql").asText();
+        return success(datasourceQueryService.createView(datasourceId, viewSql));
+    }
+
+    /**
+     * 获取索引列表
+     *
+     * @param datasourceId 数据源ID
+     * @param tableName    表名/视图名
+     * @param tableSchema  Schema（PostgreSQL需要）
+     * @return 索引列表
+     */
+    @GetMapping("/getIndexes")
+    @ApiOperation("根据数据源id和表名获取索引列表")
+    public R<List<java.util.Map<String, Object>>> getIndexes(Long datasourceId, String tableName, String tableSchema) throws IOException {
+        return success(datasourceQueryService.getIndexes(datasourceId, tableName, tableSchema));
+    }
+
+    /**
+     * 创建索引
+     *
+     * @param body JSON 包含 datasourceId, indexSql
+     * @return 是否成功
+     */
+    @PostMapping("/createIndex")
+    @ApiOperation("创建索引")
+    public R<Boolean> createIndex(@RequestBody com.fasterxml.jackson.databind.node.ObjectNode body) throws SQLException {
+        Long datasourceId = body.get("datasourceId").asLong();
+        String indexSql = body.get("indexSql").asText();
+        return success(datasourceQueryService.createIndex(datasourceId, indexSql));
+    }
 }

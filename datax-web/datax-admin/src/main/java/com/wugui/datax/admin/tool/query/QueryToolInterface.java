@@ -84,4 +84,13 @@ public interface QueryToolInterface {
      */
     long getMaxIdVal(String tableName,String primaryKey);
 
+    /**
+     * 获取索引信息
+     *
+     * @param tableName   表/视图名
+     * @param tableSchema schema（可选）
+     * @return 索引列表
+     */
+    List<Map<String, Object>> getIndexes(String tableName, String tableSchema);
+
 }

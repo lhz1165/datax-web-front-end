@@ -166,10 +166,37 @@ export const asyncRoutes = [
         meta: { title: '数据库管理', icon: 'cfg-datasouce' }
       },
       {
+        path: 'database/create-table',
+        name: 'IntegrationDatabaseCreateTable',
+        component: () => import('@/views/datax/database/create-table'),
+        hidden: true,
+        meta: { title: '创建表', icon: 'table' }
+      },
+      {
+        path: 'database/alter-table',
+        name: 'IntegrationDatabaseAlterTable',
+        component: () => import('@/views/datax/database/alter-table'),
+        hidden: true,
+        meta: { title: '修改表', icon: 'edit' }
+      },
+      {
+        path: 'database/create-view',
+        name: 'IntegrationDatabaseCreateView',
+        component: () => import('@/views/datax/database/create-view'),
+        hidden: true,
+        meta: { title: '创建视图', icon: 'view' }
+      },
+      {
         path: 'jobInfo',
         name: 'IntegrationJobInfo',
         component: () => import('@/views/datax/jobInfo/index'),
         meta: { title: '任务管理', icon: 'task-cfg' }
+      },
+      {
+        path: 'apiPublish',
+        name: 'IntegrationApiPublish',
+        component: () => import('@/views/datax/api-publish/index'),
+        meta: { title: 'API发布', icon: 'link' }
       },
       {
         path: 'jsonBuild',

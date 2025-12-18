@@ -7,6 +7,7 @@ import com.wugui.datax.admin.tool.database.ColumnInfo;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 数据库查询服务
@@ -80,6 +81,43 @@ public interface DatasourceQueryService {
      * @return 是否创建成功
      */
     Boolean createTable(CreateTableDto dto) throws SQLException;
+
+    /**
+     * 获取视图列表
+     *
+     * @param id          数据源ID
+     * @param tableSchema Schema（PostgreSQL需要）
+     * @return 视图名称列表
+     */
+    List<String> getViews(Long id, String tableSchema) throws IOException;
+
+    /**
+     * 创建视图（执行视图 SQL）
+     *
+     * @param datasourceId 数据源ID
+     * @param viewSql      视图SQL（包含 CREATE VIEW）
+     * @return 是否创建成功
+     */
+    Boolean createView(Long datasourceId, String viewSql) throws SQLException;
+
+    /**
+     * 获取索引列表
+     *
+     * @param datasourceId 数据源ID
+     * @param tableName    表/视图名
+     * @param tableSchema  schema（PostgreSQL需要）
+     * @return 索引列表
+     */
+    List<Map<String, Object>> getIndexes(Long datasourceId, String tableName, String tableSchema) throws IOException;
+
+    /**
+     * 创建索引（执行 SQL）
+     *
+     * @param datasourceId 数据源ID
+     * @param indexSql     索引SQL（CREATE INDEX ...）
+     * @return 是否成功
+     */
+    Boolean createIndex(Long datasourceId, String indexSql) throws SQLException;
 
     /**
      * 删除数据库表
