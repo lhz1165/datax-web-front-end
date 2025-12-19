@@ -755,10 +755,25 @@ export default {
 
       const startTime = Date.now()
 
+      // 构建完整的 URL，强制使用 8180 端口
+      let requestUrl = this.apiPath
+      // 如果路径包含协议或主机，提取路径部分
+      try {
+        const urlObj = new URL(requestUrl, 'http://localhost')
+        requestUrl = urlObj.pathname + (urlObj.search || '')
+      } catch (e) {
+        // 如果不是完整 URL，直接使用原路径
+      }
+      // 确保路径以 / 开头
+      if (!requestUrl.startsWith('/')) {
+        requestUrl = '/' + requestUrl
+      }
+      // 构建完整的 URL，强制使用 8180 端口
+      const fullUrl = 'http://localhost:8180' + requestUrl
+
       // 根据请求方法发送请求，端口固定为 8180
-      const baseUrl = 'http://localhost:8180'
       const config = {
-        url: baseUrl + this.apiPath,
+        url: fullUrl,
         method: this.apiMethod.toLowerCase(),
         headers: {
           'Content-Type': 'application/json'
