@@ -77,7 +77,8 @@ public class MetadataController extends BaseController {
     @GetMapping("/getTables")
     @ApiOperation("根据数据源id获取可用表名")
     public R<List<String>> getTableNames(Long datasourceId,String tableSchema) throws IOException {
-        return success(datasourceQueryService.getTables(datasourceId,tableSchema));
+        List<String> tables = datasourceQueryService.getTables(datasourceId, tableSchema);
+        return success(tables);
     }
 
     /**
@@ -111,12 +112,13 @@ public class MetadataController extends BaseController {
      *
      * @param datasourceId 数据源id
      * @param tableName    表名
+     * @param tableSchema  Schema（PostgreSQL需要）
      * @return 字段详细信息列表（包含名称、类型、备注、是否可空、是否主键等）
      */
     @GetMapping("/getColumnsInfo")
     @ApiOperation("根据数据源id和表名获取所有字段的详细信息")
-    public R<List<ColumnInfo>> getColumnsInfo(Long datasourceId, String tableName) throws IOException {
-        return success(datasourceQueryService.getColumnsInfo(datasourceId, tableName));
+    public R<List<ColumnInfo>> getColumnsInfo(Long datasourceId, String tableName, String tableSchema) throws IOException {
+        return success(datasourceQueryService.getColumnsInfo(datasourceId, tableName, tableSchema));
     }
 
     /**

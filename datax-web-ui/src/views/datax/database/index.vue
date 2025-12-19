@@ -90,16 +90,16 @@
           </div>
           <transition name="el-zoom-in-top">
             <div v-show="showTables" class="list-section-body">
-              <div
-                v-for="table in filteredTableList"
-                :key="table"
+          <div
+            v-for="table in filteredTableList"
+            :key="table"
                 :class="['table-item', { active: selectedType === 'table' && selectedTable === table }]"
-                @click="handleTableClick(table)"
-              >
-                <i class="el-icon-s-grid" />
-                <span>{{ table }}</span>
-              </div>
-              <el-empty v-if="filteredTableList.length === 0" description="暂无数据" :image-size="60" />
+            @click="handleTableClick(table)"
+          >
+            <i class="el-icon-s-grid" />
+            <span>{{ table }}</span>
+          </div>
+          <el-empty v-if="filteredTableList.length === 0" description="暂无数据" :image-size="60" />
             </div>
           </transition>
 
@@ -133,66 +133,66 @@
       <div class="structure-pane">
         <!-- 表结构 -->
         <el-card class="table-structure-card structure-main">
-          <div slot="header" class="card-header">
+        <div slot="header" class="card-header">
             <span>结构</span>
             <div v-if="selectedTable || selectedView" class="table-header-right">
               <span class="table-name">{{ selectedType === 'table' ? selectedTable : selectedView }}</span>
               <template v-if="selectedType === 'table'">
-                <el-button
-                  type="primary"
-                  size="mini"
-                  icon="el-icon-edit"
-                  @click="handleAlterTable"
-                >
-                  修改表
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="mini"
-                  icon="el-icon-delete"
-                  @click="handleDropTable"
-                >
-                  删除表
-                </el-button>
+            <el-button
+              type="primary"
+              size="mini"
+              icon="el-icon-edit"
+              @click="handleAlterTable"
+            >
+              修改表
+            </el-button>
+            <el-button
+              type="danger"
+              size="mini"
+              icon="el-icon-delete"
+              @click="handleDropTable"
+            >
+              删除表
+            </el-button>
               </template>
-            </div>
           </div>
-          <el-table
-            v-loading="columnsLoading"
-            :data="columnList"
-            border
-            stripe
-            size="small"
-            style="width: 100%"
-          >
-            <el-table-column prop="index" label="序号" width="60" align="center" />
-            <el-table-column prop="name" label="字段名" min-width="200" />
-            <el-table-column v-if="hasDetailInfo" prop="type" label="数据类型" width="100" />
-            <el-table-column v-if="hasDetailInfo" prop="length" label="长度" width="100" align="center">
-              <template slot-scope="scope">
-                {{ scope.row.length || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column v-if="hasDetailInfo" prop="nullable" label="可为空" width="80" align="center">
-              <template slot-scope="scope">
-                <el-tag v-if="scope.row.nullable !== undefined" :type="scope.row.nullable ? 'success' : 'danger'" size="mini">
-                  {{ scope.row.nullable ? '是' : '否' }}
-                </el-tag>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="hasDetailInfo" prop="primaryKey" label="主键" width="80" align="center">
-              <template slot-scope="scope">
-                <el-tag v-if="scope.row.primaryKey" type="warning" size="mini">PK</el-tag>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="hasDetailInfo" prop="comment" label="备注" min-width="150">
-              <template slot-scope="scope">
-                {{ scope.row.comment || '-' }}
-              </template>
-            </el-table-column>
-          </el-table>
+        </div>
+        <el-table
+          v-loading="columnsLoading"
+          :data="columnList"
+          border
+          stripe
+          size="small"
+          style="width: 100%"
+        >
+          <el-table-column prop="index" label="序号" width="60" align="center" />
+          <el-table-column prop="name" label="字段名" min-width="200" />
+          <el-table-column v-if="hasDetailInfo" prop="type" label="数据类型" width="100" />
+          <el-table-column v-if="hasDetailInfo" prop="length" label="长度" width="100" align="center">
+            <template slot-scope="scope">
+              {{ scope.row.length || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column v-if="hasDetailInfo" prop="nullable" label="可为空" width="80" align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.nullable !== undefined" :type="scope.row.nullable ? 'success' : 'danger'" size="mini">
+                {{ scope.row.nullable ? '是' : '否' }}
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="hasDetailInfo" prop="primaryKey" label="主键" width="80" align="center">
+            <template slot-scope="scope">
+              <el-tag v-if="scope.row.primaryKey" type="warning" size="mini">PK</el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="hasDetailInfo" prop="comment" label="备注" min-width="150">
+            <template slot-scope="scope">
+              {{ scope.row.comment || '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
           <el-empty v-if="!selectedTable && !selectedView && columnList.length === 0" description="请选择表或视图查看结构" />
         </el-card>
 
@@ -234,7 +234,7 @@
             </el-table-column>
             <el-table-column prop="definition" label="定义" min-width="260" v-if="indexList && indexList.length && indexList[0].definition !== undefined" />
           </el-table>
-        </el-card>
+      </el-card>
 
       <!-- 创建索引弹窗 -->
       <el-dialog
@@ -255,6 +255,28 @@
         <span slot="footer" class="dialog-footer">
           <el-button @click="createIndexDialogVisible = false">取消</el-button>
           <el-button type="primary" :disabled="!createIndexSql" @click="handleCreateIndex">创建</el-button>
+        </span>
+      </el-dialog>
+
+      <!-- 创建视图弹窗 -->
+      <el-dialog
+        title="创建视图"
+        :visible.sync="createViewDialogVisible"
+        width="700px"
+      >
+        <el-form label-width="80px">
+          <el-form-item label="SQL">
+            <el-input
+              v-model="createViewSql"
+              type="textarea"
+              :rows="10"
+              placeholder="请输入创建视图的SQL，例如：CREATE VIEW view_name AS SELECT * FROM table WHERE condition;"
+            />
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="createViewDialogVisible = false">取消</el-button>
+          <el-button type="primary" :disabled="!createViewSql" @click="handleCreateViewSubmit">创建</el-button>
         </span>
       </el-dialog>
       </div>
@@ -308,6 +330,10 @@ export default {
       indexesLoading: false,
       createIndexDialogVisible: false,
       createIndexSql: '',
+
+      // 视图创建相关
+      createViewDialogVisible: false,
+      createViewSql: '',
 
       // 查询参数
       datasourceQuery: {
@@ -536,6 +562,9 @@ export default {
         datasourceId: this.selectedDatasourceId,
         tableName: this.selectedType === 'table' ? this.selectedTable : this.selectedView
       }
+      if (this.showSchemaSelect && this.selectedSchema) {
+        params.tableSchema = this.selectedSchema
+      }
 
       metadataApi.getColumnsInfo(params).then(response => {
         // 接口返回 ColumnInfo 对象列表: { name, type, comment, ifPrimaryKey, isnull, length }
@@ -625,19 +654,38 @@ export default {
       })
     },
 
-    // 跳转到创建视图页面
+    // 打开创建视图弹窗
     handleCreateView() {
-      const query = {
-        datasourceId: this.selectedDatasourceId,
-        datasourceName: this.currentDatasource ? this.currentDatasource.datasourceName : '',
-        datasourceType: this.currentDatasource ? this.currentDatasource.datasource : ''
+      this.createViewSql = ''
+      this.createViewDialogVisible = true
+    },
+
+    // 提交创建视图（带二次确认）
+    handleCreateViewSubmit() {
+      if (!this.createViewSql) {
+        this.$message.warning('请输入视图SQL')
+        return
       }
-      if (this.showSchemaSelect && this.selectedSchema) {
-        query.schema = this.selectedSchema
-      }
-      this.$router.push({
-        path: '/datax/integration/database/create-view',
-        query
+      // 二次确认
+      this.$confirm('确认创建该视图吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        metadataApi.createView({
+          datasourceId: this.selectedDatasourceId,
+          viewSql: this.createViewSql
+        }).then(() => {
+          this.$message.success('视图创建成功')
+          this.createViewDialogVisible = false
+          this.createViewSql = ''
+          // 刷新视图列表
+          this.loadViewList()
+        }).catch(err => {
+          this.$message.error('创建失败：' + (err.message || '未知错误'))
+        })
+      }).catch(() => {
+        // 用户取消，不做任何操作
       })
     },
 

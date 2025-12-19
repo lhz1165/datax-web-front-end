@@ -30,33 +30,36 @@
       <!-- <el-table-column align="center" label="序号" width="95">
         <template slot-scope="scope">{{ scope.$index }}</template>
       </el-table-column> -->
-      <el-table-column label="数据源" width="150" align="center">
+      <el-table-column label="数据源" width="120" align="center">
         <template slot-scope="scope">
           <el-link type="primary" @click="handleDatabase(scope.row)">
             {{ scope.row.datasource }}
           </el-link>
         </template>
       </el-table-column>
-      <el-table-column label="数据源名称" width="150" align="center">
+      <el-table-column label="数据源名称" width="120" align="center">
         <template slot-scope="scope">{{ scope.row.datasourceName }}</template>
       </el-table-column>
       <!--<el-table-column label="用户名" width="150" align="center">
         <template slot-scope="scope">{{ scope.row.jdbcUsername ? scope.row.jdbcUsername:'-' }}</template>
       </el-table-column>-->
-      <el-table-column label="jdbc连接串" width="500" align="center" :show-overflow-tooltip="true">
+      <el-table-column label="jdbc连接串" width="350" align="center" :show-overflow-tooltip="true">
         <template slot-scope="scope">{{ scope.row.jdbcUrl ? scope.row.jdbcUrl:'-' }}</template>
       </el-table-column>
       <!-- <el-table-column label="jdbc驱动类" width="200" align="center" :show-overflow-tooltip="true">
         <template slot-scope="scope">{{ scope.row.jdbcDriverClass ? scope.row.jdbcDriverClass:'-' }}</template>
       </el-table-column>-->
-      <el-table-column label="数据库名" width="200" align="center" :show-overflow-tooltip="true">-->
+      <el-table-column label="数据库名" width="150" align="center" :show-overflow-tooltip="true">-->
         <template slot-scope="scope">{{ scope.row.databaseName ? scope.row.databaseName:'-' }}</template>-->
       </el-table-column>
-      <el-table-column label="备注" width="150" align="center">
+      <el-table-column label="备注" width="120" align="center">
         <template slot-scope="scope">{{ scope.row.comments }}</template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="250" class-name="small-padding fixed-width">
         <template slot-scope="{row}">
+          <el-button type="success" size="mini" @click="handleDatabase(row)">
+            查看
+          </el-button>
           <el-button type="primary" size="mini" @click="handleUpdate(row)">
             编辑
           </el-button>
@@ -424,6 +427,20 @@ export default {
           datasourceId: row.id
         }
       })
+    },
+    syncDatabaseName() {
+      // 从 jdbcUrl 中提取数据库名称
+      // 例如：jdbc:mysql://192.168.1.111:3306/dataxweb?serverTimezone=Asia/Shanghai -> dataxweb
+      // jdbc:postgresql://192.168.1.100:5432/iotedge_db -> iotedge_db
+      if (!this.temp.jdbcUrl) {
+        return
+      }
+      const url = this.temp.jdbcUrl.trim()
+      // 匹配模式：jdbc:xxx://host:port/databaseName 或 jdbc:xxx://host:port/databaseName?params
+      const match = url.match(/:\/\/(?:[^\/]+)\/([^?\/]+)/)
+      if (match && match[1]) {
+        this.temp.databaseName = match[1]
+      }
     }
   }
 }

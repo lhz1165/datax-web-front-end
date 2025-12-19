@@ -34,7 +34,7 @@ import java.util.Map;
  * @Version 1.0
  * @since 2019/7/18 9:22
  */
-public abstract class BaseQueryTool implements QueryToolInterface {
+public abstract class BaseQueryTool implements QueryToolInterface, AutoCloseable {
 
     protected static final Logger logger = LoggerFactory.getLogger(BaseQueryTool.class);
     /**
@@ -57,19 +57,24 @@ public abstract class BaseQueryTool implements QueryToolInterface {
      * @param jobDatasource
      */
     BaseQueryTool(JobDatasource jobDatasource) throws SQLException {
-        if (LocalCacheUtil.get(jobDatasource.getDatasourceName()) == null) {
+        // 缓存 DataSource 而不是 Connection，以支持并发请求
+        String cacheKey = jobDatasource.getDatasourceName();
+        DataSource cachedDataSource = (DataSource) LocalCacheUtil.get(cacheKey);
+        
+        if (cachedDataSource == null) {
             getDataSource(jobDatasource);
+            // 缓存 DataSource，而不是单个 Connection
+            LocalCacheUtil.set(cacheKey, this.datasource, 4 * 60 * 60 * 1000);
         } else {
-            this.connection = (Connection) LocalCacheUtil.get(jobDatasource.getDatasourceName());
-            if (!this.connection.isValid(500)) {
-                LocalCacheUtil.remove(jobDatasource.getDatasourceName());
-                getDataSource(jobDatasource);
+            this.datasource = cachedDataSource;
             }
-        }
+        
+        // 每个请求从连接池获取独立的连接，支持并发
+        this.connection = this.datasource.getConnection();
+        
         sqlBuilder = DatabaseMetaFactory.getByDbType(jobDatasource.getDatasource());
         currentSchema = getSchema(jobDatasource.getJdbcUsername());
         currentDatabase = jobDatasource.getDatasource();
-        LocalCacheUtil.set(jobDatasource.getDatasourceName(), this.connection, 4 * 60 * 60 * 1000);
     }
 
     private void getDataSource(JobDatasource jobDatasource) throws SQLException {
@@ -90,11 +95,15 @@ public abstract class BaseQueryTool implements QueryToolInterface {
         dataSource.setJdbcUrl(jdbcUrl);
         
         dataSource.setDriverClassName(jobDatasource.getJdbcDriverClass());
-        dataSource.setMaximumPoolSize(1);
-        dataSource.setMinimumIdle(0);
+        // 增加连接池大小以支持并发请求
+        dataSource.setMaximumPoolSize(5);
+        dataSource.setMinimumIdle(1);
         dataSource.setConnectionTimeout(30000);
+        // 设置连接最大生命周期，避免连接长时间占用
+        dataSource.setMaxLifetime(1800000); // 30分钟
+        // 设置连接空闲超时时间
+        dataSource.setIdleTimeout(600000); // 10分钟
         this.datasource = dataSource;
-        this.connection = this.datasource.getConnection();
     }
 
     //根据connection获取schema
@@ -185,21 +194,61 @@ public abstract class BaseQueryTool implements QueryToolInterface {
 
     @Override
     public List<ColumnInfo> getColumns(String tableName) {
+        return getColumns(tableName, null);
+    }
 
+    /**
+     * 根据表名和schema获取所有字段（支持PostgreSQL schema）
+     *
+     * @param tableName   表名
+     * @param tableSchema Schema（PostgreSQL需要）
+     * @return 字段信息列表
+     */
+    public List<ColumnInfo> getColumns(String tableName, String tableSchema) {
         List<ColumnInfo> fullColumn = Lists.newArrayList();
         //获取指定表的所有字段
+        Statement statement = null;
+        ResultSet resultSet = null;
         try {
+            // 对于PostgreSQL，如果提供了schema，使用 schema.tableName 格式
+            // 但需要先检查 tableName 是否已经包含 schema 前缀
+            String actualTableName = tableName;
+            String finalSchema = tableSchema;
+            String pureTableName = tableName;
+            
+            if (JdbcConstants.POSTGRESQL.equalsIgnoreCase(currentDatabase)) {
+                // 如果 tableName 已经包含 schema 前缀（如 "public.asset_minute"），先提取纯表名和 schema
+                if (tableName != null && tableName.contains(".")) {
+                    String[] parts = tableName.split("\\.");
+                    if (parts.length == 2) {
+                        // 如果 tableSchema 参数未提供，从 tableName 中解析 schema
+                        if (StringUtils.isBlank(tableSchema)) {
+                            finalSchema = parts[0];
+                        }
+                        pureTableName = parts[1]; // 提取纯表名
+                    }
+                }
+                // 如果提供了 tableSchema，使用 schema.tableName 格式
+                if (StringUtils.isNotBlank(finalSchema)) {
+                    actualTableName = finalSchema + "." + pureTableName;
+                } else {
+                    actualTableName = pureTableName;
+                }
+            }
+            
             //获取查询指定表所有字段的sql语句
-            String querySql = sqlBuilder.getSQLQueryFields(tableName);
+            String querySql = sqlBuilder.getSQLQueryFields(actualTableName);
             logger.info("querySql: {}", querySql);
 
             //获取所有字段
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(querySql);
+            statement = connection.createStatement();
+            resultSet = statement.executeQuery(querySql);
             ResultSetMetaData metaData = resultSet.getMetaData();
 
-            List<DasColumn> dasColumns = buildDasColumn(tableName, metaData);
-            statement.close();
+            // 传递纯表名和正确的 schema 给 buildDasColumn
+            List<DasColumn> dasColumns = buildDasColumn(pureTableName, finalSchema, metaData);
+            JdbcUtils.close(resultSet);
+            JdbcUtils.close(statement);
 
             //构建 fullColumn
             fullColumn = buildFullColumn(dasColumns);
@@ -207,6 +256,9 @@ public abstract class BaseQueryTool implements QueryToolInterface {
         } catch (SQLException e) {
             logger.error("[getColumns Exception] --> "
                     + "the exception message is:" + e.getMessage());
+        } finally {
+            JdbcUtils.close(resultSet);
+            JdbcUtils.close(statement);
         }
         return fullColumn;
     }
@@ -227,8 +279,9 @@ public abstract class BaseQueryTool implements QueryToolInterface {
     }
 
     //构建DasColumn对象
-    private List<DasColumn> buildDasColumn(String tableName, ResultSetMetaData metaData) {
+    private List<DasColumn> buildDasColumn(String tableName, String tableSchema, ResultSetMetaData metaData) {
         List<DasColumn> res = Lists.newArrayList();
+        Statement statement = null;
         try {
             int columnCount = metaData.getColumnCount();
             for (int i = 1; i <= columnCount; i++) {
@@ -242,7 +295,7 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                 res.add(dasColumn);
             }
 
-            Statement statement = connection.createStatement();
+            statement = connection.createStatement();
 
             if (currentDatabase.equals(JdbcConstants.MYSQL) || currentDatabase.equals(JdbcConstants.ORACLE)) {
                 DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -260,8 +313,9 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                         }
                     });
                 }
+                JdbcUtils.close(resultSet);
 
-                res.forEach(e -> {
+                for (DasColumn e : res) {
                     String sqlQueryComment = sqlBuilder.getSQLQueryComment(currentSchema, tableName, e.getColumnName());
                     //查询字段注释
                     try {
@@ -274,14 +328,14 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                         logger.error("[buildDasColumn executeQuery Exception] --> "
                                 + "the exception message is:" + e1.getMessage());
                     }
-                });
+                }
             } else if (currentDatabase.equals(JdbcConstants.POSTGRESQL)) {
                 // PostgreSQL 获取主键信息
                 DatabaseMetaData databaseMetaData = connection.getMetaData();
-                // 处理表名可能包含schema前缀的情况，如 "public.table_name"
+                // 使用传入的 tableSchema，如果没有则尝试从 tableName 中解析
                 String actualTableName = tableName;
-                String schemaName = null;
-                if (tableName != null && tableName.contains(".")) {
+                String schemaName = tableSchema;
+                if (StringUtils.isBlank(schemaName) && tableName != null && tableName.contains(".")) {
                     String[] parts = tableName.split("\\.");
                     schemaName = parts[0];
                     actualTableName = parts[1];
@@ -298,9 +352,11 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                 }
                 JdbcUtils.close(resultSet);
 
-                // PostgreSQL 获取字段注释
-                res.forEach(e -> {
-                    String sqlQueryComment = sqlBuilder.getSQLQueryComment(currentSchema, tableName, e.getColumnName());
+                // PostgreSQL 获取字段注释，使用正确的 schema 和表名
+                String commentSchema = StringUtils.isNotBlank(schemaName) ? schemaName : currentSchema;
+                String commentTableName = actualTableName;
+                for (DasColumn e : res) {
+                    String sqlQueryComment = sqlBuilder.getSQLQueryComment(commentSchema, commentTableName, e.getColumnName());
                     if (sqlQueryComment != null) {
                         try {
                             ResultSet resultSetComment = statement.executeQuery(sqlQueryComment);
@@ -311,15 +367,17 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                         } catch (SQLException e1) {
                             logger.error("[buildDasColumn PostgreSQL executeQuery Exception] --> "
                                     + "the exception message is:" + e1.getMessage());
+
+                        }
                         }
                     }
-                });
             }
 
-            JdbcUtils.close(statement);
         } catch (SQLException e) {
             logger.error("[buildDasColumn Exception] --> "
                     + "the exception message is:" + e.getMessage());
+        } finally {
+            JdbcUtils.close(statement);
         }
         return res;
     }
@@ -583,18 +641,54 @@ public abstract class BaseQueryTool implements QueryToolInterface {
         try {
             String dbType = currentDatabase;
             String schemaName = StringUtils.isNotBlank(tableSchema) ? tableSchema : currentSchema;
+            String actualTableName = tableName;
+            
+            // 处理表名可能包含schema前缀的情况，如 "public.asset_minute"
+            // PostgreSQL 的 getTableNames 返回的表名格式是 "schema.table_name"
+            if (tableName != null && tableName.contains(".")) {
+                String[] parts = tableName.split("\\.");
+                if (parts.length == 2) {
+                    // 如果 tableSchema 参数未提供，从 tableName 中解析 schema
+                    if (StringUtils.isBlank(tableSchema)) {
+                        schemaName = parts[0];
+                    }
+                    // 无论 tableSchema 是否提供，都需要从 tableName 中提取纯表名
+                    // 因为 PostgreSQL 返回的表名格式是 "schema.table_name"
+                    actualTableName = parts[1];
+                }
+            }
+            
             String sql;
             if (JdbcConstants.MYSQL.equalsIgnoreCase(dbType)) {
                 sql = "SELECT INDEX_NAME, NON_UNIQUE, INDEX_TYPE, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS COLS " +
                         "FROM information_schema.statistics " +
-                        "WHERE TABLE_SCHEMA='" + schemaName + "' AND TABLE_NAME='" + tableName + "' " +
+                        "WHERE TABLE_SCHEMA='" + schemaName + "' AND TABLE_NAME='" + actualTableName + "' " +
                         "GROUP BY INDEX_NAME, NON_UNIQUE, INDEX_TYPE";
             } else if (JdbcConstants.POSTGRESQL.equalsIgnoreCase(dbType)) {
                 if (StringUtils.isBlank(schemaName)) {
                     schemaName = "public";
                 }
-                sql = "SELECT indexname AS INDEX_NAME, indexdef AS INDEX_DEF " +
-                        "FROM pg_indexes WHERE schemaname='" + schemaName + "' AND tablename='" + tableName + "'";
+                // PostgreSQL 查询索引信息，包括索引名、定义和列名
+                // 使用 pg_index 和 pg_attribute 系统表来获取索引列
+                sql = "SELECT " +
+                        "pi.indexname AS INDEX_NAME, " +
+                        "pi.indexdef AS INDEX_DEF, " +
+                        "COALESCE(" +
+                        "  (SELECT string_agg(pa.attname::text, ', ' ORDER BY array_position(ix.indkey, pa.attnum)) " +
+                        "   FROM pg_index ix " +
+                        "   JOIN pg_class c ON c.oid = ix.indrelid " +
+                        "   JOIN pg_namespace n ON n.oid = c.relnamespace " +
+                        "   JOIN pg_class ic ON ic.oid = ix.indexrelid " +
+                        "   JOIN pg_attribute pa ON pa.attrelid = c.oid AND pa.attnum = ANY(ix.indkey) " +
+                        "   WHERE n.nspname = pi.schemaname " +
+                        "     AND c.relname = pi.tablename " +
+                        "     AND ic.relname = pi.indexname" +
+                        "  ), " +
+                        "  ''" +
+                        ") AS COLUMNS " +
+                        "FROM pg_indexes pi " +
+                        "WHERE pi.schemaname = '" + schemaName + "' AND pi.tablename = '" + actualTableName + "' " +
+                        "ORDER BY pi.indexname";
             } else {
                 return indexes;
             }
@@ -608,7 +702,10 @@ public abstract class BaseQueryTool implements QueryToolInterface {
                     row.put("indexType", rs.getString(3));
                     row.put("columns", rs.getString(4));
                 } else {
+                    // PostgreSQL
                     row.put("definition", rs.getString(2));
+                    String columns = rs.getString(3);
+                    row.put("columns", StringUtils.isNotBlank(columns) ? columns : "");
                 }
                 indexes.add(row);
             }
@@ -646,5 +743,19 @@ public abstract class BaseQueryTool implements QueryToolInterface {
 
     protected String getSQLQueryTableSchema() {
         return sqlBuilder.getSQLQueryTableSchema();
+    }
+
+    /**
+     * 关闭连接，将连接返回到连接池
+     */
+    @Override
+    public void close() {
+        if (this.connection != null) {
+            try {
+                this.connection.close();
+            } catch (SQLException e) {
+                logger.error("[close Connection Exception] --> the exception message is:" + e.getMessage());
+            }
+        }
     }
 }

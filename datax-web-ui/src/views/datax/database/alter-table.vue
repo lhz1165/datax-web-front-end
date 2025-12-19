@@ -299,6 +299,9 @@ export default {
         datasourceId: this.datasourceId,
         tableName: this.tableName
       }
+      if (this.schema) {
+        params.tableSchema = this.schema
+      }
       getColumnsInfo(params).then(response => {
         this.existingColumns = (response || []).map(col => ({
           name: col.name,

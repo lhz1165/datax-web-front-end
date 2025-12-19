@@ -55,10 +55,14 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return new MongoDBQueryTool(datasource).getCollectionNames(datasource.getDatabaseName());
         } else {
             BaseQueryTool qTool = QueryToolFactory.getByDbType(datasource);
-            if(StringUtils.isBlank(tableSchema)){
-                return qTool.getTableNames();
-            }else{
-                return qTool.getTableNames(tableSchema);
+            try {
+                if(StringUtils.isBlank(tableSchema)){
+                    return qTool.getTableNames();
+                }else{
+                    return qTool.getTableNames(tableSchema);
+                }
+            } finally {
+                qTool.close();
             }
         }
     }
@@ -72,7 +76,11 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return Lists.newArrayList();
         }
         BaseQueryTool qTool = QueryToolFactory.getByDbType(datasource);
-        return qTool.getTableSchema();
+        try {
+            return qTool.getTableSchema();
+        } finally {
+            qTool.close();
+        }
     }
 
     @Override
@@ -101,7 +109,11 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return new MongoDBQueryTool(datasource).getColumns(tableName);
         } else {
             BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-            return queryTool.getColumnNames(tableName, datasource.getDatasource());
+            try {
+                return queryTool.getColumnNames(tableName, datasource.getDatasource());
+            } finally {
+                queryTool.close();
+            }
         }
     }
 
@@ -114,11 +126,15 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return Lists.newArrayList();
         }
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(jdbcDatasource);
-        return queryTool.getColumnsByQuerySql(querySql);
+        try {
+            return queryTool.getColumnsByQuerySql(querySql);
+        } finally {
+            queryTool.close();
+        }
     }
 
     @Override
-    public List<ColumnInfo> getColumnsInfo(Long id, String tableName) throws IOException {
+    public List<ColumnInfo> getColumnsInfo(Long id, String tableName, String tableSchema) throws IOException {
         //获取数据源对象
         JobDatasource datasource = jobDatasourceService.getById(id);
         //queryTool组装
@@ -126,7 +142,11 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return Lists.newArrayList();
         }
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        return queryTool.getColumns(tableName);
+        try {
+            return queryTool.getColumns(tableName, tableSchema);
+        } finally {
+            queryTool.close();
+        }
     }
 
     @Override
@@ -142,9 +162,12 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
 
         //执行建表SQL
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        queryTool.executeCreateTableSql(createTableSql);
-
-        return true;
+        try {
+            queryTool.executeCreateTableSql(createTableSql);
+            return true;
+        } finally {
+            queryTool.close();
+        }
     }
 
     @Override
@@ -158,7 +181,11 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
         if (JdbcConstants.MYSQL.equals(datasource.getDatasource()) ||
             JdbcConstants.POSTGRESQL.equals(datasource.getDatasource())) {
             BaseQueryTool qTool = QueryToolFactory.getByDbType(datasource);
-            return qTool.getViews(tableSchema);
+            try {
+                return qTool.getViews(tableSchema);
+            } finally {
+                qTool.close();
+            }
         }
         return Lists.newArrayList();
     }
@@ -174,8 +201,12 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             throw new RuntimeException("视图SQL不能为空");
         }
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        queryTool.executeCreateTableSql(viewSql);
-        return true;
+        try {
+            queryTool.executeCreateTableSql(viewSql);
+            return true;
+        } finally {
+            queryTool.close();
+        }
     }
 
     @Override
@@ -185,7 +216,11 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             return Lists.newArrayList();
         }
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        return queryTool.getIndexes(tableName, tableSchema);
+        try {
+            return queryTool.getIndexes(tableName, tableSchema);
+        } finally {
+            queryTool.close();
+        }
     }
 
     @Override
@@ -198,8 +233,12 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
             throw new RuntimeException("索引SQL不能为空");
         }
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        queryTool.executeCreateTableSql(indexSql);
-        return true;
+        try {
+            queryTool.executeCreateTableSql(indexSql);
+            return true;
+        } finally {
+            queryTool.close();
+        }
     }
 
     /**
@@ -391,9 +430,12 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
 
         //执行删表SQL
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        queryTool.executeCreateTableSql(dropTableSql);
-
-        return true;
+        try {
+            queryTool.executeCreateTableSql(dropTableSql);
+            return true;
+        } finally {
+            queryTool.close();
+        }
     }
 
     /**
@@ -453,9 +495,12 @@ public class DatasourceQueryServiceImpl implements DatasourceQueryService {
 
         //执行修改表SQL
         BaseQueryTool queryTool = QueryToolFactory.getByDbType(datasource);
-        queryTool.executeCreateTableSql(alterSql);
-
-        return true;
+        try {
+            queryTool.executeCreateTableSql(alterSql);
+            return true;
+        } finally {
+            queryTool.close();
+        }
     }
 
     /**

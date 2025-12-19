@@ -79,7 +79,7 @@ export const constantRoutes = [
         path: 'dashboard',
         component: () => import('@/views/dashboard/admin/index'),
         name: 'Dashboard',
-        meta: { title: '运行报表', icon: 'dashboard', affix: true }
+        meta: { title: '概览', icon: 'dashboard', affix: true }
       }
     ]
   }
@@ -126,21 +126,6 @@ export const asyncRoutes = [
         component: () => import('@/views/error-page/404'),
         name: 'Page404',
         meta: { title: '404', noCache: true }
-      }
-    ]
-  },
-  {
-    path: '/datax/project',
-    component: Layout,
-    redirect: '/datax/jobProject',
-    name: 'datasource',
-    meta: { title: '项目管理', icon: 'project' },
-    children: [
-      {
-        path: 'jobProject',
-        name: 'jobProject',
-        component: () => import('@/views/datax/jobProject/index'),
-        meta: { title: '项目管理', icon: 'project' }
       }
     ]
   },
@@ -196,7 +181,14 @@ export const asyncRoutes = [
         path: 'apiPublish',
         name: 'IntegrationApiPublish',
         component: () => import('@/views/datax/api-publish/index'),
-        meta: { title: 'API发布', icon: 'link' }
+        meta: { title: 'API管理', icon: 'link' }
+      },
+      {
+        path: 'apiPublish/edit',
+        name: 'IntegrationApiPublishEdit',
+        hidden: true,
+        component: () => import('@/views/datax/api-publish/edit'),
+        meta: { title: 'API管理-编辑', icon: 'link' }
       },
       {
         path: 'jsonBuild',
@@ -216,6 +208,7 @@ export const asyncRoutes = [
         path: 'jobTemplate',
         name: 'IntegrationJobTemplate',
         component: () => import('@/views/datax/jobTemplate/index'),
+        hidden: true,
         meta: { title: 'DataX任务模板', icon: 'task-tmp' }
       },
       {
@@ -251,6 +244,12 @@ export const asyncRoutes = [
         name: 'SystemExecutor',
         component: () => import('@/views/datax/executor/index'),
         meta: { title: '执行器管理', icon: 'exe-cfg' }
+      },
+      {
+        path: 'jobProject',
+        name: 'SystemJobProject',
+        component: () => import('@/views/datax/jobProject/index'),
+        meta: { title: '项目管理', icon: 'project' }
       },
       {
         path: 'jsonTool',

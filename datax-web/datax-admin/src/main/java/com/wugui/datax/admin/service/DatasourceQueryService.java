@@ -70,9 +70,10 @@ public interface DatasourceQueryService {
      *
      * @param id        数据源id
      * @param tableName 表名
+     * @param tableSchema Schema（PostgreSQL需要）
      * @return 字段详细信息列表
      */
-    List<ColumnInfo> getColumnsInfo(Long id, String tableName) throws IOException;
+    List<ColumnInfo> getColumnsInfo(Long id, String tableName, String tableSchema) throws IOException;
 
     /**
      * 创建数据库表
