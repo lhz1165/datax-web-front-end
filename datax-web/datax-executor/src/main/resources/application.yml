@@ -6,7 +6,7 @@ server:
 # log config
 logging:
   config: classpath:logback.xml
-  path: ${data.path}/applogs/executor/jobhandler
+  path: /app/modules/datax-executor/data/applogs/executor/jobhandler
   #path: ./data/applogs/executor/jobhandler
 
 datax:
@@ -22,7 +22,7 @@ datax:
       #port: ${executor.port:9999}
       ### job log path
       #logpath: ./data/applogs/executor/jobhandler
-      logpath: ${data.path}/applogs/executor/jobhandler
+      logpath: /app/modules/datax-executor/data/applogs/executor/jobhandler
       ### job log retention days
       logretentiondays: 30
     ### job, access token
@@ -30,7 +30,7 @@ datax:
 
   executor:
     #jsonpath: D:\\temp\\executor\\json\\
-    jsonpath: ${json.path}
+    jsonpath: /app/modules/datax-executor/json
 
   #pypath: D:\\tool\\datax\\bin\\datax.py
   pypath: /app/datax/datax/bin/datax.py
