@@ -40,6 +40,13 @@
       <el-table-column label="所属项目" align="center" width="120">
         <template slot-scope="scope">{{ scope.row.projectName }}</template>
       </el-table-column>
+      <el-table-column label="任务类型" align="center" width="100">
+        <template slot-scope="scope">
+          <el-tag :type="scope.row.type === 0 ? 'info' : 'success'">
+            {{ scope.row.type === 0 ? '全量同步' : '增量同步' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="Cron" align="center" width="120">
         <template slot-scope="scope">
           <span>{{ scope.row.jobCron }}</span>
@@ -425,7 +432,8 @@ export default {
         primaryKey: '',
         projectId: '',
         datasourceId: '',
-        readerTable: ''
+        readerTable: '',
+        type: 0
       },
       resetTemp() {
         this.temp = this.$options.data().temp
@@ -711,7 +719,7 @@ export default {
     },
     // 查看日志
     handlerViewLog(row) {
-      this.$router.push({ path: '/datax/log/jobLog', query: { jobId: row.id }})
+      this.$router.push({ path: '/datax/integration/jobLog', query: { jobId: row.id }})
     },
     handlerStart(row) {
       job.startJob(row.id).then(response => {

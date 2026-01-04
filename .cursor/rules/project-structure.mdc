@@ -1,0 +1,373 @@
+---
+alwaysApply: true
+---
+# 项目目录结构规范
+
+本文档定义了 DataX 前端项目的目录结构规范和约定，确保代码组织清晰、易于维护和扩展。
+
+## 项目整体结构
+
+项目采用前后端分离架构，包含以下主要目录：
+
+```
+datax-front-end/
+├── datax-web/              # 后端项目（Java Spring Boot）
+├── datax-web-ui/           # 前端项目（Vue.js）
+├── .cursor/                # Cursor IDE 配置
+│   └── rules/              # Cursor 规则文件
+├── README.md               # 项目说明文档
+└── 参考项目结构.md         # 项目结构参考文档
+```
+
+## 后端项目结构（datax-web）
+
+### 模块划分
+
+后端采用多模块 Maven 项目结构：
+
+```
+datax-web/
+├── datax-admin/           # 管理端模块（主模块）
+├── datax-executor/        # 执行器模块
+├── datax-core/            # 核心模块
+├── datax-rpc/             # RPC 通信模块
+├── datax-assembly/        # 打包模块
+├── bin/                   # 启动脚本
+├── doc/                   # 文档目录
+└── pom.xml                # 父 POM
+```
+
+### Java 源码目录结构（datax-admin）
+
+遵循标准的 Maven 目录结构：
+
+```
+datax-admin/src/main/java/com/wugui/datax/admin/
+├── config/                # 配置类（Spring Configuration）
+│   ├── SecurityConfig.java
+│   ├── SwaggerConfig.java
+│   └── WebConfig.java
+├── controller/            # REST 控制器（API 接口层）
+│   ├── BaseController.java
+│   ├── JobInfoController.java
+│   └── ...
+├── service/               # 业务逻辑层
+│   ├── impl/              # 服务实现类
+│   ├── JobService.java
+│   └── ...
+├── mapper/                # 数据访问层（MyBatis Mapper）
+│   ├── JobInfoMapper.java
+│   └── ...
+├── entity/                # 实体类（数据库表映射）
+│   ├── JobInfo.java
+│   └── ...
+├── dto/                   # 数据传输对象（Data Transfer Object）
+│   ├── DataXJsonBuildDto.java
+│   └── ...
+├── tool/                  # 工具类目录
+│   ├── database/          # 数据库相关工具
+│   ├── datax/             # DataX 相关工具
+│   ├── query/             # 查询工具
+│   └── ...
+├── util/                  # 通用工具类
+│   ├── JdbcUtils.java
+│   └── ...
+├── core/                  # 核心功能模块
+│   ├── conf/              # 配置
+│   ├── handler/           # 处理器
+│   ├── scheduler/         # 调度器
+│   └── ...
+├── filter/                # 过滤器
+├── exception/             # 异常处理
+└── DataXAdminApplication.java  # 启动类
+```
+
+### 目录命名规范
+
+1. **包名（Package）**：
+   - 使用小写字母，多个单词用点分隔
+   - 遵循 Java 包命名规范：`com.wugui.datax.admin`
+   - 示例：`com.wugui.datax.admin.controller`
+
+2. **类名（Class）**：
+   - 使用大驼峰命名（PascalCase）
+   - Controller 以 `Controller` 结尾
+   - Service 以 `Service` 结尾
+   - Mapper 以 `Mapper` 结尾
+   - Entity 使用实体名称，无后缀
+   - DTO 以 `Dto` 结尾
+   - 示例：`JobInfoController.java`, `JobService.java`, `JobInfo.java`
+
+3. **目录结构**：
+   - 按功能模块划分，而非按技术层次
+   - 相关功能放在同一包下
+   - 工具类按用途分类存放
+
+### 文件组织规范
+
+1. **Controller 层**：
+   - 每个业务模块一个 Controller
+   - 继承 `BaseController` 获取通用功能
+   - 示例：`JobInfoController` 处理任务相关接口
+
+2. **Service 层**：
+   - 接口定义在 `service` 包
+   - 实现类放在 `service/impl` 包
+   - 一个 Service 对应一个业务领域
+
+3. **Mapper 层**：
+   - 每个实体对应一个 Mapper
+   - Mapper 接口定义在 `mapper` 包
+   - XML 映射文件放在 `resources/mapper` 目录
+
+4. **Entity 层**：
+   - 实体类与数据库表一一对应
+   - 使用 JPA 或 MyBatis-Plus 注解
+   - 放在 `entity` 包
+
+5. **DTO 层**：
+   - 用于 API 请求和响应的数据传输
+   - 避免直接暴露 Entity
+   - 放在 `dto` 包
+
+## 前端项目结构（datax-web-ui）
+
+### 主要目录结构
+
+```
+datax-web-ui/
+├── src/
+│   ├── api/               # API 接口定义
+│   ├── assets/            # 静态资源（图片、字体等）
+│   ├── components/        # 公共组件
+│   ├── directive/         # 自定义指令
+│   ├── filters/           # 过滤器
+│   ├── icons/              # 图标资源
+│   ├── layout/             # 布局组件
+│   ├── router/             # 路由配置
+│   ├── store/              # Vuex 状态管理
+│   ├── styles/             # 样式文件
+│   ├── utils/              # 工具函数
+│   ├── views/              # 页面组件
+│   ├── vendor/             # 第三方库
+│   ├── App.vue             # 根组件
+│   └── main.js             # 入口文件
+├── public/                # 公共静态资源
+├── build/                  # 构建配置
+├── mock/                   # Mock 数据
+└── package.json            # 依赖配置
+```
+
+### 详细目录说明
+
+#### 1. api/ - API 接口层
+
+```
+src/api/
+├── datax-executor.js      # 执行器相关接口
+├── datax-job-info.js      # 任务信息接口
+├── datax-jdbcDatasource.js # 数据源接口
+├── datax-job-api.js       # 任务 API 接口
+└── ...
+```
+
+**规范**：
+- 每个业务模块一个文件
+- 使用 `datax-` 前缀命名
+- 导出函数使用驼峰命名
+- 示例：`export function getJobList() {}`
+
+#### 2. views/ - 页面组件
+
+```
+src/views/
+├── dashboard/             # 仪表盘页面
+├── datax/                 # DataX 业务页面
+│   ├── database/          # 数据库管理
+│   ├── jobInfo/           # 任务管理
+│   ├── api-publish/       # API 发布
+│   └── ...
+├── login/                 # 登录页面
+├── error-page/            # 错误页面
+└── ...
+```
+
+**规范**：
+- 按业务模块组织目录
+- 每个页面一个目录，包含 `index.vue`
+- 子页面放在对应模块目录下
+- 示例：`/datax/integration/jobInfo` → `views/datax/jobInfo/index.vue`
+
+#### 3. components/ - 公共组件
+
+```
+src/components/
+├── Pagination/            # 分页组件
+├── JsonEditor/            # JSON 编辑器
+├── Cron/                  # Cron 表达式组件
+├── ShellEditor/           # Shell 编辑器
+└── ...
+```
+
+**规范**：
+- 每个组件一个目录
+- 组件目录名使用大驼峰命名
+- 主文件命名为 `index.vue`
+- 组件名与目录名保持一致
+
+#### 4. router/ - 路由配置
+
+```
+src/router/
+├── index.js               # 主路由配置
+└── modules/               # 路由模块
+    └── tool.js            # 工具类路由
+```
+
+**规范**：
+- 路由路径使用 kebab-case
+- 路由名称使用大驼峰命名
+- 路由按功能模块分组
+
+#### 5. store/ - 状态管理
+
+```
+src/store/
+├── index.js               # Store 入口
+├── getters.js             # 全局 Getters
+└── modules/               # 模块化 Store
+    ├── user.js           # 用户模块
+    └── ...
+```
+
+**规范**：
+- 按业务模块划分 Store
+- 每个模块一个文件
+- 使用命名空间避免冲突
+
+#### 6. utils/ - 工具函数
+
+```
+src/utils/
+├── request.js            # HTTP 请求封装
+├── auth.js               # 认证工具
+├── validate.js           # 验证工具
+└── ...
+```
+
+**规范**：
+- 工具函数按功能分类
+- 使用小驼峰命名
+- 导出函数而非对象
+
+### 前端文件命名规范
+
+1. **组件文件**：
+   - 使用大驼峰命名（PascalCase）
+   - 示例：`JobInfo.vue`, `ApiPublish.vue`
+
+2. **工具文件**：
+   - 使用小驼峰命名（camelCase）
+   - 示例：`request.js`, `auth.js`
+
+3. **目录名**：
+   - 组件目录：大驼峰命名
+   - 业务目录：kebab-case 或小写
+   - 示例：`components/Pagination/`, `views/datax/jobInfo/`
+
+4. **路由路径**：
+   - 使用 kebab-case
+   - 示例：`/datax/integration/jobInfo`
+
+## 通用规范
+
+### 1. 目录组织原则
+
+- **按功能模块组织**，而非按技术层次
+- **相关文件放在一起**，减少跨目录引用
+- **保持目录层级不超过 4 层**
+
+### 2. 文件放置规则
+
+**后端**：
+- Controller 放在 `controller` 包
+- Service 接口和实现分离
+- Mapper 放在 `mapper` 包
+- Entity 放在 `entity` 包
+- DTO 放在 `dto` 包
+
+**前端**：
+- 页面组件放在 `views` 目录
+- 公共组件放在 `components` 目录
+- API 接口放在 `api` 目录
+- 工具函数放在 `utils` 目录
+
+### 3. 命名约定
+
+**后端 Java**：
+- 类名：大驼峰（PascalCase）
+- 方法名：小驼峰（camelCase）
+- 常量：全大写下划线分隔（UPPER_SNAKE_CASE）
+- 包名：全小写，点分隔
+
+**前端 JavaScript/Vue**：
+- 组件名：大驼峰（PascalCase）
+- 函数名：小驼峰（camelCase）
+- 常量：全大写下划线分隔（UPPER_SNAKE_CASE）
+- 文件名：与组件/类名保持一致
+
+### 4. 代码组织最佳实践
+
+✅ **好的实践**：
+- 按业务功能组织代码
+- 保持目录结构清晰
+- 相关文件放在同一目录
+- 使用有意义的命名
+
+❌ **避免的做法**：
+- 将所有文件放在一个目录
+- 使用无意义的命名
+- 跨多个目录查找相关文件
+- 目录层级过深
+
+## 示例
+
+### 后端示例：任务管理模块 datax-admin
+
+```
+com.wugui.datax.admin/
+├── controller/
+│   └── JobInfoController.java      # 任务信息控制器
+├── service/
+│   ├── JobService.java             # 任务服务接口
+│   └── impl/
+│       └── JobServiceImpl.java     # 任务服务实现
+├── mapper/
+│   └── JobInfoMapper.java          # 任务信息 Mapper
+├── entity/
+│   └── JobInfo.java                # 任务信息实体
+└── dto/
+    └── TaskScheduleDto.java        # 任务调度 DTO
+```
+
+### 前端示例：任务管理页面
+
+```
+src/
+├── api/
+│   └── datax-job-info.js           # 任务信息 API
+├── views/
+│   └── datax/
+│       └── jobInfo/
+│           └── index.vue           # 任务列表页面
+└── components/
+    └── Pagination/
+        └── index.vue               # 分页组件
+```
+
+## 注意事项
+
+1. **保持一致性**：遵循既定的目录结构和命名规范
+2. **及时重构**：当目录结构不合理时，及时重构
+3. **文档更新**：目录结构变更时，更新本文档
+4. **团队协作**：确保团队成员了解并遵循这些规范

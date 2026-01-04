@@ -48,6 +48,9 @@
       <el-form-item label="where条件：" prop="where">
         <el-input v-model="readerForm.where" placeholder="where条件，不需要再加where" type="textarea" style="width: 42%" />
       </el-form-item>
+      <el-form-item v-if="taskType === 1" label="slotName：">
+        <el-input v-model="localSlotName" placeholder="请输入 slotName" style="width: 300px" @input="updateSlotName" />
+      </el-form-item>
     </el-form>
   </div>
 </template>
@@ -55,10 +58,19 @@
 <script>
 import * as dsQueryApi from '@/api/metadata-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
-import Bus from '../busReader'
 
 export default {
   name: 'RDBMSReader',
+  props: {
+    taskType: {
+      type: Number,
+      default: 0
+    },
+    slotName: {
+      type: String,
+      default: ''
+    }
+  },
   data() {
     return {
       jdbcDsQuery: {
@@ -76,6 +88,7 @@ export default {
       customType: '',
       customValue: '',
       dataSource: '',
+      localSlotName: '',
       readerForm: {
         datasourceId: undefined,
         tableName: '',
@@ -95,11 +108,26 @@ export default {
     }
   },
   watch: {
-    'readerForm.datasourceId': function(oldVal, newVal) {
-      if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
-        this.getSchema()
-      } else {
-        this.getTables('rdbmsReader')
+    slotName: {
+      immediate: true,
+      handler(newVal) {
+        this.localSlotName = newVal
+      }
+    }
+  },
+  watch: {
+    'readerForm.datasourceId': function(newVal, oldVal) {
+      // 如果数据源ID改变，且 dataSource 已设置，则判断是否需要获取 schema
+      if (newVal && newVal !== oldVal && this.dataSource) {
+        if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
+          // 需要 schema 的数据库，先获取 schema（如果还没有获取过）
+          if (this.schemaList.length === 0) {
+            this.getSchema()
+          }
+        } else {
+          // 不需要 schema 的数据库，直接获取表
+          this.getTables('rdbmsReader')
+        }
       }
     }
   },
@@ -156,14 +184,25 @@ export default {
     rDsChange(e) {
       // 清空
       this.readerForm.tableName = ''
+      this.readerForm.tableSchema = ''
       this.readerForm.datasourceId = e
+      this.rTbList = []
+      this.schemaList = []
       this.rDsList.find((item) => {
         if (item.id === e) {
           this.dataSource = item.datasource
         }
       })
-      Bus.dataSourceId = e
+      // 移除 Bus.dataSourceId 的设置，不再自动传递数据源ID
       this.$emit('selectDataSource', this.dataSource)
+      // 判断是否需要先获取 schema
+      if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
+        // 需要 schema 的数据库，先获取 schema
+        this.getSchema()
+      } else {
+        // 不需要 schema 的数据库，直接获取表
+        this.getTables('rdbmsReader')
+      }
     },
     getTableColumns() {
       const obj = {
@@ -215,11 +254,17 @@ export default {
       this.readerForm.checkAll = checkedCount === this.rColumnList.length
       this.readerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.rColumnList.length
     },
+    updateSlotName(value) {
+      this.localSlotName = value
+      this.$emit('update:slotName', value)
+    },
     getData() {
-      if (Bus.dataSourceId) {
-        this.readerForm.datasourceId = Bus.dataSourceId
+      // 移除自动选择数据源的逻辑，必须手动选择
+      const data = { ...this.readerForm }
+      if (this.taskType === 1) {
+        data.slotName = this.localSlotName
       }
-      return this.readerForm
+      return data
     }
   }
 }

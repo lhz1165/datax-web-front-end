@@ -48,6 +48,8 @@ public interface JobInfoMapper {
 
     int findAllCount();
 
+    Long findMaxId();
+
     List<JobInfo> scheduleJobQuery(@Param("maxNextTime") long maxNextTime, @Param("pagesize") int pagesize);
 
     int scheduleUpdate(JobInfo xxlJobInfo);

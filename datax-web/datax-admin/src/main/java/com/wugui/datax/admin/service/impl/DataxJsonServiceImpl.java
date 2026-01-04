@@ -35,9 +35,20 @@ public class DataxJsonServiceImpl implements DataxJsonService {
     @Autowired
     private JobDatasourceService jobJdbcDatasourceService;
 
+    @Autowired
+    private JobInfoMapper jobInfoMapper;
+
     @Override
     public String buildJobJson(DataXJsonBuildDto dataXJsonBuildDto) {
         DataxJsonHelper dataxJsonHelper = new DataxJsonHelper();
+        
+        // 如果是增量同步（type=1），查询 job_info 表获取最大 jobId，然后加1
+        if (dataXJsonBuildDto.getType() != null && dataXJsonBuildDto.getType() == 1) {
+            Long maxJobId = jobInfoMapper.findMaxId();
+            // 设置 jobId 为最大 id + 1（如果 maxJobId 为 null，则默认为 1）
+            dataxJsonHelper.setJobId(String.valueOf(maxJobId != null ? maxJobId + 1 : 1));
+        }
+        
         // reader
         JobDatasource readerDatasource = jobJdbcDatasourceService.getById(dataXJsonBuildDto.getReaderDatasourceId());
         // reader plugin init

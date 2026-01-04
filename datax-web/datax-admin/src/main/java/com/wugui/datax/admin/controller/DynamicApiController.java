@@ -274,22 +274,22 @@ public class DynamicApiController extends BaseController {
                 sqlParams.add(convertValue(value, type));
                 return fieldName + " != ?";
                 
-            case "greater":
+            case "greaterthan":
             case ">":
                 sqlParams.add(convertValue(value, type));
                 return fieldName + " > ?";
                 
-            case "greaterorequal":
+            case "greaterthanorequal":
             case ">=":
                 sqlParams.add(convertValue(value, type));
                 return fieldName + " >= ?";
                 
-            case "less":
+            case "lessthan":
             case "<":
                 sqlParams.add(convertValue(value, type));
                 return fieldName + " < ?";
                 
-            case "lessorequal":
+            case "lessthanorequal":
             case "<=":
                 sqlParams.add(convertValue(value, type));
                 return fieldName + " <= ?";

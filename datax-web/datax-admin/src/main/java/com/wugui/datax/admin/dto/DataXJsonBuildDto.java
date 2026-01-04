@@ -43,4 +43,14 @@ public class DataXJsonBuildDto implements Serializable {
     private MongoDBReaderDto mongoDBReader;
 
     private MongoDBWriterDto mongoDBWriter;
+
+    /**
+     * 任务类型：0-全量同步，1-增量同步
+     */
+    private Integer type;
+
+    /**
+     * slotName（增量同步时使用）
+     */
+    private String slotName;
 }

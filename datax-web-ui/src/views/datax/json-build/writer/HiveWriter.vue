@@ -76,7 +76,6 @@
 <script>
 import * as dsQueryApi from '@/api/metadata-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
-import Bus from '../busWriter'
 export default {
   name: 'HiveWriter',
   data() {
@@ -164,7 +163,7 @@ export default {
           this.dataSource = item.datasource
         }
       })
-      Bus.dataSourceId = e
+      // 移除 Bus.dataSourceId 的设置，不再自动传递数据源ID
       this.$emit('selectDataSource', this.dataSource)
       // 获取可用表
       this.getTables()
@@ -206,9 +205,7 @@ export default {
       this.writerForm.isIndeterminate = false
     },
     getData() {
-      if (Bus.dataSourceId) {
-        this.writerForm.datasourceId = Bus.dataSourceId
-      }
+      // 移除自动选择数据源的逻辑，必须手动选择
       return this.writerForm
     },
     getReaderData() {

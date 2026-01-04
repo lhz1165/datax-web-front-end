@@ -27,7 +27,8 @@
       </div>
 
       <el-button :disabled="active===1" style="margin-top: 12px;" @click="last">上一步</el-button>
-      <el-button type="primary" style="margin-top: 12px;margin-bottom: 12px;" @click="next">下一步</el-button>
+      <el-button v-if="active !== 4" type="primary" style="margin-top: 12px;margin-bottom: 12px;" @click="next">下一步</el-button>
+      <el-button v-if="active === 4" type="primary" style="margin-top: 12px;margin-bottom: 12px;" @click="handleBackToJobInfo">返回</el-button>
     </div>
 
     <!-- 创建任务对话框 -->
@@ -48,13 +49,6 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="路由策略" prop="executorRouteStrategy">
-              <el-select v-model="temp.executorRouteStrategy" placeholder="请选择路由策略">
-                <el-option v-for="item in routeStrategies" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-dialog
               title="提示"
@@ -78,17 +72,11 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="阻塞处理" prop="executorBlockStrategy">
-              <el-select v-model="temp.executorBlockStrategy" placeholder="请选择阻塞处理策略">
-                <el-option v-for="item in blockStrategies" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
             <el-form-item label="报警邮件">
               <el-input v-model="temp.alarmEmail" placeholder="请输入报警邮件，多个用逗号分隔" />
             </el-form-item>
           </el-col>
+          <el-col :span="12" />
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
@@ -117,16 +105,6 @@
               <el-input-number v-model="temp.executorTimeout" :min="0" :max="120" />
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="子任务">
-              <el-select v-model="temp.childJobId" multiple placeholder="子任务" value-key="id">
-                <el-option v-for="item in jobIdList" :key="item.id" :label="item.jobDesc" :value="item" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" />
         </el-row>
         <el-row v-if="temp.glueType==='BEAN'" :gutter="20">
           <el-col :span="12">
@@ -303,7 +281,7 @@ export default {
       executorList: [],
       jobIdList: [],
       jobProjectList: [],
-      dataSourceList: [],
+      dataSourceList: [], // 数据源列表，传递给子组件
       glueTypes: [
         { value: 'BEAN', label: 'DataX任务' },
         { value: 'GLUE_SHELL', label: 'Shell任务' },
@@ -354,9 +332,9 @@ export default {
         jobGroup: '',
         jobCron: '',
         jobDesc: '',
-        executorRouteStrategy: '',
-        executorBlockStrategy: '',
-        childJobId: '',
+        executorRouteStrategy: 'FIRST', // 默认选择第一个
+        executorBlockStrategy: 'SERIAL_EXECUTION', // 默认单机串行
+        childJobId: '', // 子任务设为无
         executorFailRetryCount: '',
         alarmEmail: '',
         executorTimeout: '',
@@ -377,7 +355,8 @@ export default {
         primaryKey: '',
         projectId: '',
         datasourceId: '',
-        readerTable: ''
+        readerTable: '',
+        type: 0
       }
     }
   },
@@ -401,6 +380,11 @@ export default {
       // const fromTableName = this.$refs.reader.getData().tableName
       // 第一步 reader 判断是否已选字段
       if (this.active === 1) {
+        // 获取任务类型
+        const readerData = this.$refs.reader.getData()
+        if (readerData && readerData.type !== undefined) {
+          this.temp.type = readerData.type
+        }
         // 实现第一步骤读取的表和字段直接带到第二步骤
         // this.$refs.writer.sendTableNameAndColumns(fromTableName, fromColumnList)
         // 取子组件的数据
@@ -503,11 +487,56 @@ export default {
         hbaseReader: hbaseReader,
         hbaseWriter: hbaseWriter,
         mongoDBReader: mongoDBReader,
-        mongoDBWriter: mongoDBWriter
+        mongoDBWriter: mongoDBWriter,
+        // 添加任务类型和 slotName（如果是增量同步）
+        type: readerData.type || 0,
+        slotName: readerData.type === 1 ? (readerData.slotName || '') : null
       }
-      // 调api
+      // 调api构建json（后端会自动处理增量同步的 jobId 和 slotName）
       dataxJsonApi.buildJobJson(obj).then(response => {
-        this.configJson = JSON.parse(response)
+        // 处理响应数据：统一转换为对象
+        let jsonObj
+        if (typeof response === 'string') {
+          // 去除首尾空白
+          let jsonStr = response.trim()
+          // 如果字符串是双重转义的，需要先解析一次
+          try {
+            // 先尝试直接解析
+            jsonObj = JSON.parse(jsonStr)
+          } catch (e) {
+            // 如果失败，可能是双重转义，尝试再次解析
+            try {
+              const firstParse = JSON.parse(jsonStr)
+              if (typeof firstParse === 'string') {
+                jsonObj = JSON.parse(firstParse)
+              } else {
+                jsonObj = firstParse
+              }
+            } catch (e2) {
+              this.$message({
+                message: '解析JSON失败：' + (e2.message || '未知错误'),
+                type: 'error'
+              })
+              return
+            }
+          }
+        } else {
+          jsonObj = response
+        }
+        // 格式化 JSON 字符串
+        const formattedJson = JSON.stringify(jsonObj, null, 2)
+        this.configJson = formattedJson
+        // 确保 JsonEditor 正确更新
+        this.$nextTick(() => {
+          if (this.$refs.jsonEditor && this.$refs.jsonEditor.jsonEditor) {
+            this.$refs.jsonEditor.jsonEditor.setValue(formattedJson)
+          }
+        })
+      }).catch(error => {
+        this.$message({
+          message: '构建JSON失败：' + (error.message || '未知错误'),
+          type: 'error'
+        })
       })
     },
     handleCopy(text, event) {
@@ -559,23 +588,69 @@ export default {
       }
       // 重置表单
       this.resetTemp()
-      // 填充 JSON
-      this.jobJson = typeof this.configJson === 'string' ? this.configJson : JSON.stringify(this.configJson, null, 2)
+      // 从 reader 组件获取任务类型
+      const readerData = this.$refs.reader.getData()
+      if (readerData && readerData.type !== undefined) {
+        this.temp.type = readerData.type
+      }
+      // 设置默认值
+      this.temp.executorRouteStrategy = 'FIRST' // 路由策略默认第一个
+      this.temp.executorBlockStrategy = 'SERIAL_EXECUTION' // 阻塞处理默认单机串行
+      this.temp.childJobId = '' // 子任务设为无
+      // 填充 JSON，确保格式化
+      let jsonValue = this.configJson
+      if (typeof jsonValue === 'string') {
+        try {
+          // 如果是字符串，先解析再格式化，确保格式正确
+          const parsed = JSON.parse(jsonValue.trim())
+          jsonValue = JSON.stringify(parsed, null, 2)
+        } catch (e) {
+          // 如果解析失败，尝试再次解析（可能是双重转义）
+          try {
+            const firstParse = JSON.parse(jsonValue.trim())
+            if (typeof firstParse === 'string') {
+              const parsed = JSON.parse(firstParse)
+              jsonValue = JSON.stringify(parsed, null, 2)
+            } else {
+              jsonValue = JSON.stringify(firstParse, null, 2)
+            }
+          } catch (e2) {
+            // 如果还是失败，使用原字符串
+            jsonValue = jsonValue.trim()
+          }
+        }
+      } else if (jsonValue && typeof jsonValue === 'object') {
+        // 如果是对象，直接格式化
+        jsonValue = JSON.stringify(jsonValue, null, 2)
+      }
+      this.jobJson = jsonValue
       // 打开对话框
       this.dialogFormVisible = true
       this.$nextTick(() => {
         this.$refs['dataForm'].clearValidate()
+        // 确保 JsonEditor 正确更新
+        if (this.$refs.createJobJsonEditor) {
+          this.$refs.createJobJsonEditor.jsonEditor && this.$refs.createJobJsonEditor.jsonEditor.refresh()
+        }
       })
     },
     resetTemp() {
+      // 获取任务类型，默认全量同步
+      let taskType = 0
+      if (this.$refs.reader && this.$refs.reader.getData) {
+        const readerData = this.$refs.reader.getData()
+        if (readerData && readerData.type !== undefined) {
+          taskType = readerData.type
+        }
+      }
       this.temp = {
         id: undefined,
         jobGroup: '',
         jobCron: '',
         jobDesc: '',
-        executorRouteStrategy: '',
-        executorBlockStrategy: '',
-        childJobId: '',
+        executorRouteStrategy: 'FIRST', // 默认选择第一个
+        executorBlockStrategy: 'SERIAL_EXECUTION', // 默认单机串行
+        childJobId: '', // 子任务设为无
         executorFailRetryCount: '',
         alarmEmail: '',
         executorTimeout: '',
@@ -591,6 +666,7 @@ export default {
         jvmParam: '',
         incStartTime: '',
         partitionInfo: '',
+        type: taskType,
         incrementType: 0,
         incStartId: '',
         primaryKey: '',
@@ -644,6 +720,13 @@ export default {
       }
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
+          // 确保 type 字段被正确设置
+          if (this.$refs.reader && this.$refs.reader.getData) {
+            const readerData = this.$refs.reader.getData()
+            if (readerData && readerData.type !== undefined) {
+              this.temp.type = readerData.type
+            }
+          }
           if (this.temp.childJobId) {
             const auth = []
             for (const i in this.temp.childJobId) {
@@ -668,6 +751,9 @@ export default {
       })
     },
     incStartTimeFormat(vData) {
+    },
+    handleBackToJobInfo() {
+      this.$router.push({ path: '/datax/integration/jobInfo' })
     }
   }
 }

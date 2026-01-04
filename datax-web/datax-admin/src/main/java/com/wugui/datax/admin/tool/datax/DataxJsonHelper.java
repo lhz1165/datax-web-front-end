@@ -87,6 +87,20 @@ public class DataxJsonHelper implements DataxJsonInterface {
 
     private MongoDBWriterDto mongoDBWriterDto;
 
+    /**
+     * 任务类型：0-全量同步，1-增量同步
+     */
+    private Integer type;
+
+    /**
+     * slotName（增量同步时使用）
+     */
+    private String slotName;
+
+    /**
+     * jobId（增量同步时使用，从 job_info 表查询最大 id + 1）
+     */
+    private String jobId;
 
     //用于保存额外参数
     private Map<String, Object> extraParams = Maps.newHashMap();
@@ -99,12 +113,22 @@ public class DataxJsonHelper implements DataxJsonInterface {
         this.hiveReaderDto = dataxJsonDto.getHiveReader();
         this.rdbmsReaderDto = dataxJsonDto.getRdbmsReader();
         this.hbaseReaderDto = dataxJsonDto.getHbaseReader();
+        // 保存任务类型和 slotName
+        this.type = dataxJsonDto.getType();
+        this.slotName = dataxJsonDto.getSlotName();
         // reader 插件
         String datasource = readerDatasource.getDatasource();
 
         this.readerColumns = convertKeywordsColumns(datasource, this.readerColumns);
+        // 如果是增量同步（type=1），MySQL 和 PostgreSQL 使用 Debezium Reader
+        boolean isIncremental = (type != null && type == 1);
+        
         if (MYSQL.equals(datasource)) {
-            readerPlugin = new MysqlReader();
+            if (isIncremental) {
+                readerPlugin = new MySQLDebeziumReader();
+            } else {
+                readerPlugin = new MysqlReader();
+            }
             buildReader = buildReader();
         } else if (ORACLE.equals(datasource)) {
             readerPlugin = new OracleReader();
@@ -113,7 +137,11 @@ public class DataxJsonHelper implements DataxJsonInterface {
             readerPlugin = new SqlServerReader();
             buildReader = buildReader();
         } else if (POSTGRESQL.equals(datasource)) {
-            readerPlugin = new PostgresqlReader();
+            if (isIncremental) {
+                readerPlugin = new PostgreSQLDebeziumReader();
+            } else {
+                readerPlugin = new PostgresqlReader();
+            }
             buildReader = buildReader();
         } else if (CLICKHOUSE.equals(datasource)) {
             readerPlugin = new ClickHouseReader();
@@ -220,7 +248,8 @@ public class DataxJsonHelper implements DataxJsonInterface {
         Map<String, Object> res = Maps.newLinkedHashMap();
         Map<String, Object> speedMap = Maps.newLinkedHashMap();
         Map<String, Object> errorLimitMap = Maps.newLinkedHashMap();
-        speedMap.putAll(ImmutableMap.of("channel", 3, "byte", 1048576));
+        //speedMap.putAll(ImmutableMap.of("channel", 1, "byte", 1048576));
+        speedMap.putAll(ImmutableMap.of("channel", 1));
         errorLimitMap.putAll(ImmutableMap.of("record", 0, "percentage", 0.02));
         res.put("speed", speedMap);
         res.put("errorLimit", errorLimitMap);
@@ -249,7 +278,10 @@ public class DataxJsonHelper implements DataxJsonInterface {
         if (StringUtils.isNotBlank(rdbmsReaderDto.getWhereParams())) {
             dataxPluginPojo.setWhereParam(rdbmsReaderDto.getWhereParams());
         }
-        return readerPlugin.build(dataxPluginPojo);
+        Map<String, Object> readerObj = readerPlugin.build(dataxPluginPojo);
+        // 如果是增量同步，添加 jobId 和 slotName
+        addIncrementalParams(readerObj);
+        return readerObj;
     }
 
     @Override
@@ -269,7 +301,10 @@ public class DataxJsonHelper implements DataxJsonInterface {
         dataxHivePojo.setReaderFileType(hiveReaderDto.getReaderFileType());
         dataxHivePojo.setReaderPath(hiveReaderDto.getReaderPath());
         dataxHivePojo.setSkipHeader(hiveReaderDto.getReaderSkipHeader());
-        return readerPlugin.buildHive(dataxHivePojo);
+        Map<String, Object> readerObj = readerPlugin.buildHive(dataxHivePojo);
+        // 如果是增量同步，添加 jobId 和 slotName
+        addIncrementalParams(readerObj);
+        return readerObj;
     }
 
     @Override
@@ -289,7 +324,10 @@ public class DataxJsonHelper implements DataxJsonInterface {
         dataxHbasePojo.setReaderTable(readerTable);
         dataxHbasePojo.setReaderMode(hbaseReaderDto.getReaderMode());
         dataxHbasePojo.setReaderRange(hbaseReaderDto.getReaderRange());
-        return readerPlugin.buildHbase(dataxHbasePojo);
+        Map<String, Object> readerObj = readerPlugin.buildHbase(dataxHbasePojo);
+        // 如果是增量同步，添加 jobId 和 slotName
+        addIncrementalParams(readerObj);
+        return readerObj;
     }
 
     @Override
@@ -302,7 +340,10 @@ public class DataxJsonHelper implements DataxJsonInterface {
         dataxMongoDBPojo.setAddress(readerDatasource.getJdbcUrl());
         dataxMongoDBPojo.setDbName(readerDatasource.getDatabaseName());
         dataxMongoDBPojo.setReaderTable(readerTables.get(0));
-        return readerPlugin.buildMongoDB(dataxMongoDBPojo);
+        Map<String, Object> readerObj = readerPlugin.buildMongoDB(dataxMongoDBPojo);
+        // 如果是增量同步，添加 jobId 和 slotName
+        addIncrementalParams(readerObj);
+        return readerObj;
     }
 
 
@@ -314,6 +355,7 @@ public class DataxJsonHelper implements DataxJsonInterface {
         dataxPluginPojo.setRdbmsColumns(writerColumns);
         dataxPluginPojo.setPreSql(rdbmsWriterDto.getPreSql());
         dataxPluginPojo.setPostSql(rdbmsWriterDto.getPostSql());
+        dataxPluginPojo.setBatchSize("1");
         return writerPlugin.build(dataxPluginPojo);
     }
 
@@ -382,5 +424,25 @@ public class DataxJsonHelper implements DataxJsonInterface {
             column.put("type", c.split(Constants.SPLIT_SCOLON)[1]);
             returnColumns.add(column);
         });
+    }
+
+    /**
+     * 如果是增量同步（type=1），添加 jobId 和 slotName 到 reader.parameter
+     */
+    private void addIncrementalParams(Map<String, Object> readerObj) {
+        if (type != null && type == 1 && readerObj != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parameterObj = (Map<String, Object>) readerObj.get("parameter");
+            if (parameterObj != null) {
+                // 添加 jobId
+                if (jobId != null) {
+                    parameterObj.put("jobId", jobId);
+                }
+                // 添加 slotName（如果有值）
+                if (StringUtils.isNotBlank(slotName)) {
+                    parameterObj.put("slotName", slotName);
+                }
+            }
+        }
     }
 }

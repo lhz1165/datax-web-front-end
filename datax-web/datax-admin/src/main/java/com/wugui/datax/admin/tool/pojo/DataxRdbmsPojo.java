@@ -55,4 +55,6 @@ public class DataxRdbmsPojo {
      * where
      */
     private String whereParam;
+
+    private String batchSize;
 }

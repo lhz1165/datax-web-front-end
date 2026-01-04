@@ -68,7 +68,6 @@
 <script>
 import * as dsQueryApi from '@/api/metadata-query'
 import { list as jdbcDsList } from '@/api/datax-jdbcDatasource'
-import Bus from '../busWriter'
 export default {
   name: 'RDBMSWriter',
   data() {
@@ -105,11 +104,18 @@ export default {
     }
   },
   watch: {
-    'writerForm.datasourceId': function(oldVal, newVal) {
-      if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
-        this.getSchema()
-      } else {
-        this.getTables('rdbmsWriter')
+    'writerForm.datasourceId': function(newVal, oldVal) {
+      // 如果数据源ID改变，且 dataSource 已设置，则判断是否需要获取 schema
+      if (newVal && newVal !== oldVal && this.dataSource) {
+        if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
+          // 需要 schema 的数据库，先获取 schema（如果还没有获取过）
+          if (this.schemaList.length === 0) {
+            this.getSchema()
+          }
+        } else {
+          // 不需要 schema 的数据库，直接获取表
+          this.getTables('rdbmsWriter')
+        }
       }
     }
   },
@@ -163,14 +169,25 @@ export default {
     wDsChange(e) {
       // 清空
       this.writerForm.tableName = ''
+      this.writerForm.tableSchema = ''
       this.writerForm.datasourceId = e
+      this.wTbList = []
+      this.schemaList = []
       this.wDsList.find((item) => {
         if (item.id === e) {
           this.dataSource = item.datasource
         }
       })
-      Bus.dataSourceId = e
+      // 移除 Bus.dataSourceId 的设置，不再自动传递数据源ID
       this.$emit('selectDataSource', this.dataSource)
+      // 判断是否需要先获取 schema
+      if (this.dataSource === 'postgresql' || this.dataSource === 'oracle' || this.dataSource === 'sqlserver') {
+        // 需要 schema 的数据库，先获取 schema
+        this.getSchema()
+      } else {
+        // 不需要 schema 的数据库，直接获取表
+        this.getTables('rdbmsWriter')
+      }
     },
     // 获取表字段
     getColumns() {
@@ -202,9 +219,7 @@ export default {
       this.writerForm.isIndeterminate = checkedCount > 0 && checkedCount < this.fromColumnList.length
     },
     getData() {
-      if (Bus.dataSourceId) {
-        this.writerForm.datasourceId = Bus.dataSourceId
-      }
+      // 移除自动选择数据源的逻辑，必须手动选择
       return this.writerForm
     },
     getReaderData() {

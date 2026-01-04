@@ -37,6 +37,7 @@ public abstract class BaseWriterPlugin extends BaseDataxPlugin {
         parameterObj.put("column", plugin.getRdbmsColumns());
         parameterObj.put("preSql", splitSql(plugin.getPreSql()));
         parameterObj.put("postSql", splitSql(plugin.getPostSql()));
+        parameterObj.put("batchSize", plugin.getBatchSize());
 
         Map<String, Object> connectionObj = Maps.newLinkedHashMap();
         connectionObj.put("table", plugin.getTables());

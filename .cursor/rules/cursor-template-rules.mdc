@@ -1,0 +1,95 @@
+---
+alwaysApply: false
+---
+# Cursor Rules Location
+ 
+How to add new cursor rules to the project
+ 
+1. Always place rule files in PROJECT_ROOT/.cursor/rules/:
+
+.cursor/rules/
+├── your-rule-name.mdc
+├── another-rule.mdc
+└── ...
+
+ 
+2. Follow the naming convention:
+- Use kebab-case for filenames
+- Always use .mdc extension
+- Make names descriptive of the rule's purpose
+ 
+3. Directory structure:
+
+PROJECT_ROOT/
+├── .cursor/
+│ └── rules/
+│ ├── your-rule-name.mdc
+│ └── ...
+└── ...
+
+ 
+4. Never place rule files:
+- In the project root
+- In subdirectories outside .cursor/rules
+- In any other location
+ 
+5. Cursor rules have the following structure:
+ 
+---
+description: Write a brief description of the purpose of the rule
+globs: optional/path/pattern/**/*
+alwaysApply: false
+---
+# Rule Title
+ 
+Main content explaining the rule with markdown formatting.
+ 
+1. Step-by-step instructions
+2. Code examples
+3. Guidelines
+ 
+Example:
+
+// Good example
+function goodExample() {
+// Implementation following guidelines
+}
+ 
+// Bad example
+function badExample() {
+// Implementation not following guidelines
+}
+
+
+ 
+6. Metadata requirements:
+- **description**: 必须提供非空的描述，清晰说明规则的用途
+- **globs**: 可选，指定规则应用的文件模式
+- **alwaysApply**: 通常设置为false，除非需要全局应用
+ 
+示例：
+ 
+✅ 正确的元数据：
+---
+description: 进行日期与时间处理的最佳实践
+globs:
+alwaysApply: false
+---
+
+ 
+❌ 错误的元数据（description为空）：
+---
+description:
+globs:
+alwaysApply: false
+---
+ 
+7. 创建新规则文件时的注意事项：
+- 确保提供有意义的description字段值，不能留空
+- 使用适当的globs模式匹配相关文件类型
+- 规则内容应清晰、具体，并提供示例
+
+作者：细雨_吟啸且徐行
+链接：https://juejin.cn/post/7520213457867423784
+来源：稀土掘金
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。

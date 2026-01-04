@@ -51,7 +51,17 @@ export function deleteApi(idList) {
   return request({
     url: '/api/jobApi',
     method: 'delete',
-    params: { idList }
+    params: { idList },
+    // 自定义序列化，生成 ?idList=1&idList=2 这种格式，方便后端用 @RequestParam("idList") List<Long> 接收
+    paramsSerializer: params => {
+      const searchParams = new URLSearchParams()
+      if (Array.isArray(params.idList)) {
+        params.idList.forEach(v => searchParams.append('idList', v))
+      } else if (params.idList !== undefined && params.idList !== null) {
+        searchParams.append('idList', params.idList)
+      }
+      return searchParams.toString()
+    }
   })
 }
 

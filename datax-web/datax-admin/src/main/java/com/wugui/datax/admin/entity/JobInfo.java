@@ -117,6 +117,9 @@ public class JobInfo {
 	@ApiModelProperty("数据源id")
 	private int datasourceId;
 
+	@ApiModelProperty("任务类型：0-全量同步，1-增量同步")
+	private int type;
+
 	@TableField(exist=false)
 	private String projectName;
 

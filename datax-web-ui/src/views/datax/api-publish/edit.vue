@@ -768,10 +768,11 @@ export default {
       if (!requestUrl.startsWith('/')) {
         requestUrl = '/' + requestUrl
       }
-      // 构建完整的 URL，强制使用 8180 端口
+      // 构建完整的 URL，强制使用 18180 端口
+      //const fullUrl = 'http://192.168.1.104:18180' + requestUrl
       const fullUrl = 'http://localhost:8180' + requestUrl
 
-      // 根据请求方法发送请求，端口固定为 8180
+      // 根据请求方法发送请求，端口固定为 18180
       const config = {
         url: fullUrl,
         method: this.apiMethod.toLowerCase(),
