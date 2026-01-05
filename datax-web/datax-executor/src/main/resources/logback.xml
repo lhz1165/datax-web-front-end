@@ -14,7 +14,7 @@
     <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>/app/modules/datax-executor/data/applogs/executor/jobhandler/datax-executor.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/app/modules/datax-executor/data/applogs/executor/jobhandler}.%d{yyyy-MM-dd}.zip</fileNamePattern>
+            <fileNamePattern>/app/modules/datax-executor/data/applogs/executor/jobhandler.%d{yyyy-MM-dd}.zip</fileNamePattern>
         </rollingPolicy>
         <encoder>
             <pattern>%date %level [%thread] %logger{20} [%file : %line] %msg%n
