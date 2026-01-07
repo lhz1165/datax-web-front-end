@@ -9,6 +9,9 @@
       </el-steps>
 
       <div v-show="active===1" class="step1">
+        <div style="margin-bottom: 12px;">
+          <el-button type="primary" plain @click="handleGoToJobInfo({ skipJsonCheck: true })">自定义构建</el-button>
+        </div>
         <Reader ref="reader" />
       </div>
       <div v-show="active===2" class="step2">
@@ -19,7 +22,7 @@
       </div>
       <div v-show="active===4" class="step4">
         <el-button type="primary" @click="buildJson">1.构建</el-button>
-        <el-button type="primary" @click="handleGoToJobInfo" :disabled="!configJson">2.添加任务</el-button>
+        <el-button type="primary" @click="handleGoToJobInfo">2.添加任务</el-button>
         <el-button type="info" @click="handleCopy(inputData,$event)">复制json</el-button>
         (步骤：构建->添加任务)
         <div style="margin-bottom: 20px;" />
@@ -69,14 +72,6 @@
               </el-input>
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="报警邮件">
-              <el-input v-model="temp.alarmEmail" placeholder="请输入报警邮件，多个用逗号分隔" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" />
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
@@ -336,7 +331,6 @@ export default {
         executorBlockStrategy: 'SERIAL_EXECUTION', // 默认单机串行
         childJobId: '', // 子任务设为无
         executorFailRetryCount: '',
-        alarmEmail: '',
         executorTimeout: '',
         userId: 0,
         jobConfigId: '',
@@ -578,14 +572,8 @@ export default {
       this.$refs.jobTemplateSelectDrawer.closeDrawer()
       this.jobTemplate = val.id + '(' + val.jobDesc + ')'
     },
-    handleGoToJobInfo() {
-      if (!this.configJson) {
-        this.$message({
-          message: '请先构建JSON',
-          type: 'warning'
-        })
-        return
-      }
+    handleGoToJobInfo(options = {}) {
+      const { skipJsonCheck = false } = options
       // 重置表单
       this.resetTemp()
       // 从 reader 组件获取任务类型
@@ -599,31 +587,38 @@ export default {
       this.temp.childJobId = '' // 子任务设为无
       // 填充 JSON，确保格式化
       let jsonValue = this.configJson
-      if (typeof jsonValue === 'string') {
-        try {
-          // 如果是字符串，先解析再格式化，确保格式正确
-          const parsed = JSON.parse(jsonValue.trim())
-          jsonValue = JSON.stringify(parsed, null, 2)
-        } catch (e) {
-          // 如果解析失败，尝试再次解析（可能是双重转义）
+      if (jsonValue) {
+        if (typeof jsonValue === 'string') {
           try {
-            const firstParse = JSON.parse(jsonValue.trim())
-            if (typeof firstParse === 'string') {
-              const parsed = JSON.parse(firstParse)
-              jsonValue = JSON.stringify(parsed, null, 2)
-            } else {
-              jsonValue = JSON.stringify(firstParse, null, 2)
+            // 如果是字符串，先解析再格式化，确保格式正确
+            const parsed = JSON.parse(jsonValue.trim())
+            jsonValue = JSON.stringify(parsed, null, 2)
+          } catch (e) {
+            // 如果解析失败，尝试再次解析（可能是双重转义）
+            try {
+              const firstParse = JSON.parse(jsonValue.trim())
+              if (typeof firstParse === 'string') {
+                const parsed = JSON.parse(firstParse)
+                jsonValue = JSON.stringify(parsed, null, 2)
+              } else {
+                jsonValue = JSON.stringify(firstParse, null, 2)
+              }
+            } catch (e2) {
+              // 如果还是失败，使用原字符串
+              jsonValue = jsonValue.trim()
             }
-          } catch (e2) {
-            // 如果还是失败，使用原字符串
-            jsonValue = jsonValue.trim()
           }
+        } else if (jsonValue && typeof jsonValue === 'object') {
+          // 如果是对象，直接格式化
+          jsonValue = JSON.stringify(jsonValue, null, 2)
         }
-      } else if (jsonValue && typeof jsonValue === 'object') {
-        // 如果是对象，直接格式化
-        jsonValue = JSON.stringify(jsonValue, null, 2)
+      } else {
+        // 自定义构建场景允许直接填写 JSON
+        jsonValue = ''
       }
       this.jobJson = jsonValue
+      // 直接跳转到步骤四，方便自定义构建
+      this.active = 4
       // 打开对话框
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -652,7 +647,6 @@ export default {
         executorBlockStrategy: 'SERIAL_EXECUTION', // 默认单机串行
         childJobId: '', // 子任务设为无
         executorFailRetryCount: '',
-        alarmEmail: '',
         executorTimeout: '',
         userId: 0,
         jobConfigId: '',
